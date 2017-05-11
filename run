@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+CARGO_INCREMENTAL=1 RUST_LOG=gfx-sdl=debug rustup run nightly cargo run

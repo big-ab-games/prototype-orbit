@@ -1,0 +1,13 @@
+[package]
+name = "gfx-sdl"
+version = "0.1.0"
+authors = ["Alex Butler <alexheretic@gmail.com>"]
+
+[dependencies]
+gfx = "0"
+gfx_window_sdl = "0"
+sdl2 = "0"
+log = "0"
+env_logger = "0"
+time = "0"
+image = "0"
