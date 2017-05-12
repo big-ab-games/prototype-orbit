@@ -18,6 +18,7 @@ void main() {
     vec2 coords = f_tex_coords;
 
     float waterline = mix(0.63, 0.67, norm_sin(sin(u_ticks / 1000.)));
+    waterline = waterline + sin(coords.x * 50. + u_ticks / 80.0) / 400.0;
     bool water = coords.y > waterline;
 
     if (water) {
@@ -25,7 +26,8 @@ void main() {
         // coords = vec2(coords.x, waterline * 2.0 - coords.y);
 
         // sin waves
-        coords = vec2(coords.x + sin(coords.y * 40.0 + u_ticks / 300.0) / 30.0, waterline * 2.0 - coords.y);
+        coords = vec2(coords.x + sin((coords.y - waterline) * 30.0 + u_ticks / 300.0) / 50.0,
+                      waterline * 2.0 - coords.y);
     }
 
     vec4 happy = texture(t_happy, coords);
@@ -34,5 +36,12 @@ void main() {
     if (water) // color the water a bit
         some_target = some_target * vec4(0.6, 0.7, 1.0, 1.0);
 
-    some_target = some_target * vec4(f_color, 1.0);
+    // some_target = some_target * vec4(f_color, 1.0);
+
+    // make the water a little transparent
+    happy = texture(t_happy, f_tex_coords);
+    sad = texture(t_sad, f_tex_coords);
+    some_target = mix(some_target,
+                      mix(sad, happy, min(norm_sin(sin(u_ticks / 1000.0)) * 3.0, 1.0)),
+                      0.1);
 }

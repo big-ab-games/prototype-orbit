@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+nodemon -e glsl,rs --exec ./run
