@@ -1,22 +1,32 @@
 #[macro_use] extern crate log;
 #[macro_use] extern crate gfx;
 #[macro_use] extern crate gfx_macros;
-extern crate env_logger;
+extern crate pretty_env_logger;
 extern crate gfx_window_sdl;
 extern crate sdl2;
 extern crate time;
 extern crate image;
 extern crate cgmath;
 extern crate gfx_text;
+extern crate notify;
 
 // use std::f64::consts::PI;
 use gfx::traits::{FactoryExt, Factory};
-use gfx::{texture, Device};
+use gfx::{texture, Device, PipelineStateError};
 use sdl2::event::Event as SdlEvent;
 use sdl2::keyboard::Keycode;
 use std::io::Cursor;
 use cgmath::*;
+use gfx::{Resources};
 use gfx_text::{HorizontalAnchor, VerticalAnchor};
+
+use notify::{Watcher, RecursiveMode, watcher};
+use std::sync::mpsc::channel;
+use std::time::Duration;
+use std::path::Path;
+use std::fs::File;
+use std::error::Error;
+use std::io::prelude::*;
 
 pub type ColorFormat = gfx::format::Srgba8;
 pub type DepthFormat = gfx::format::DepthStencil;
@@ -99,8 +109,27 @@ fn ortho_projection(aspect: f32, zoom: f32, origin: Vector2<f32>) -> Matrix4<f32
           origin.y - zoom , origin.y + zoom, 0.0, 100.0)
 }
 
+fn load_pipeline_state<R, F>(factory: &mut F) -> Result<gfx::PipelineState<R, pipe::Meta>, Box<Error>> where R: gfx::Resources,
+      F: gfx::Factory<R> {
+    let mut buffer = Vec::new();
+    File::open("src/shader/some.frag.glsl")?.read_to_end(&mut buffer);
+    let mut vertex_shader = Vec::new();
+    File::open("src/shader/some.vert.glsl")?.read_to_end(&mut vertex_shader);
+    let set = factory
+        .create_shader_set(&vertex_shader,
+                           &buffer)?;
+    Ok(factory
+        .create_pipeline_state(&set,
+                               gfx::Primitive::TriangleList,
+                               gfx::state::Rasterizer {
+                                   samples: Some(gfx::state::MultiSample {}),
+                                   ..gfx::state::Rasterizer::new_fill()
+                               },
+                               pipe::new())?)
+}
+
 pub fn main() {
-    env_logger::init().unwrap();
+    pretty_env_logger::init().unwrap();
     let sdl_context = sdl2::init().unwrap();
     let video = sdl_context.video().unwrap();
 
@@ -123,19 +152,7 @@ pub fn main() {
     let sampler = factory.create_sampler(
         texture::SamplerInfo::new(texture::FilterMethod::Anisotropic(16), texture::WrapMode::Mirror));
 
-    let set = factory
-        .create_shader_set(include_bytes!("shader/some.vert.glsl"),
-                           include_bytes!("shader/some.frag.glsl"))
-        .unwrap();
-    let pso = factory
-        .create_pipeline_state(&set,
-                               gfx::Primitive::TriangleList,
-                               gfx::state::Rasterizer {
-                                   samples: Some(gfx::state::MultiSample {}),
-                                   ..gfx::state::Rasterizer::new_fill()
-                               },
-                               pipe::new())
-        .unwrap();
+    let mut pso = load_pipeline_state(&mut factory).expect("!load_pipeline_state");
 
     let mut fps_txt = gfx_text::new(factory.clone()).with_size(14).unwrap();
 
@@ -154,7 +171,7 @@ pub fn main() {
     let start = time::precise_time_s();
     let mut passed = time::precise_time_s() - start;
     let mut recent_frames = Vec::new();
-    let mut view: Matrix4<f32> = bird_view_at_height(1.0);
+    let view: Matrix4<f32> = bird_view_at_height(1.0);
 
     // let perspective_projection = perspective(Rad((PI * 0.3) as f32), 1024. / 768., 0.01, 10.0);
     let aspect = 1024./768.;
@@ -162,7 +179,19 @@ pub fn main() {
     let mut origin = Vector2::new(0.0f32, 0.0);
     let mut fps: i64 = 0;
 
+    let (tx, shader_changes) = channel();
+    let mut watcher = watcher(tx, Duration::from_millis(100)).unwrap();
+    watcher.watch(Path::new("src/shader").canonicalize().unwrap(), RecursiveMode::Recursive).unwrap();
+
     'main: loop {
+        if let Ok(notify::DebouncedEvent::NoticeWrite(path)) = shader_changes.try_recv() {
+           info!("{:?} changed", path);
+           match load_pipeline_state(&mut factory) {
+               Ok(new_pso) => pso = new_pso,
+               Err(err) => error!("{:?}", err)
+           };
+        }
+
         let last_passed = passed;
         passed = time::precise_time_s() - start;
         let delta = passed - last_passed;

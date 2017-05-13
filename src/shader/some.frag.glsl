@@ -32,12 +32,14 @@ void main() {
     vec4 sad = texture(t_sad, coords);
     some_target = mix(sad, happy, min(norm_sin(sin(u_ticks / 1000.0)) * 3.0, 1.0));
     if (water) // color the water a bit
-        some_target = some_target * vec4(0.6, 0.90, 1.0, 1.0);
+        some_target = some_target * vec4(0.6, 0.9, 1.0, 1.0);
 
     // make the water a little transparent
-    happy = texture(t_happy, f_tex_coords);
-    sad = texture(t_sad, f_tex_coords);
-    some_target = mix(some_target,
-                      mix(sad, happy, min(norm_sin(sin(u_ticks / 1000.0)) * 3.0, 1.0)),
-                      0.1);
+    if (water) {
+        happy = texture(t_happy, f_tex_coords);
+        sad = texture(t_sad, f_tex_coords);
+        some_target = mix(some_target,
+                          mix(sad, happy, min(norm_sin(sin(u_ticks / 1000.0)) * 3.0, 1.0)),
+                          0.1);
+    }
 }
