@@ -236,7 +236,6 @@ pub fn main() {
         if recent_frames.len() >= 20 {
             let sum: f64 = recent_frames.iter().sum();
             fps = (1.0 / (sum / recent_frames.len() as f64)).round() as i64;
-            // debug!("{} fps", (1.0 / (sum / recent_frames.len() as f64)).round() as i64);
             recent_frames.clear();
         }
 
