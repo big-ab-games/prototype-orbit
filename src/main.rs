@@ -11,6 +11,7 @@ extern crate gfx_text;
 extern crate notify;
 
 mod input;
+mod state;
 mod svsc;
 
 use std::sync::{Arc, Mutex};
@@ -29,6 +30,7 @@ use std::fs::File;
 use std::error::Error;
 use std::io::prelude::*;
 use input::*;
+use state::*;
 
 pub type ColorFormat = gfx::format::Srgba8;
 pub type DepthFormat = gfx::format::DepthStencil;
@@ -268,7 +270,7 @@ pub fn main() {
 
         encoder.update_constant_buffer(&data.u_transform, &Transform {
             u_view: user_lock.view.into(),
-            u_proj: user_lock.ortho_projection().into(),
+            u_proj: user_lock.projection().into(),
         });
 
         mem::drop(user_lock);
