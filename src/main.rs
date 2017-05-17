@@ -13,6 +13,7 @@ extern crate notify;
 mod input;
 mod state;
 mod svsc;
+// mod smooth;
 
 use std::sync::{Arc, Mutex};
 use std::mem;

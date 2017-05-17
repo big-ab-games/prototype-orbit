@@ -27,8 +27,6 @@ impl UserMouse {
             // &WindowEvent::MouseWheel{ delta: MouseScrollDelta::LineDelta(_, y), ..} => {
                 // general double/half zoom for fast view changes
                 let factor = if y < 0. { state.zoom } else { state.zoom / 2. };
-
-
                 let zoom_to = state.screen_to_world(self.last_position);
                 state.zoom -= factor * y as f32;
                 if state.zoom < MAX_ZOOM {

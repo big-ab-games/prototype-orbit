@@ -10,7 +10,7 @@ pub struct UserState {
     pub wants_out: bool,
 }
 
-fn bird_view_at_height(height: f32) -> Matrix4<f32> {
+fn birds_eye_at_z(height: f32) -> Matrix4<f32> {
     let mut view = Matrix4::identity();
     view.z.z = height;
     view
@@ -23,7 +23,7 @@ impl UserState {
             zoom: 1.0f32,
             screen_width,
             screen_height,
-            view: bird_view_at_height(1.0),
+            view: birds_eye_at_z(1.0),
             wants_out: false,
         }
     }
