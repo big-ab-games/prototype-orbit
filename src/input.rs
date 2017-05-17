@@ -2,7 +2,7 @@ use glutin::*;
 use state::*;
 
 /// max zoom is mathematically the 'minimum' zoom value
-const MAX_ZOOM: f32 = 0.1;
+const MAX_ZOOM: f32 = 0.5;
 
 pub struct UserMouse {
     left_down: Option<(i32, i32)>,
@@ -25,15 +25,19 @@ impl UserMouse {
             &WindowEvent::MouseWheel(MouseScrollDelta::LineDelta(_, y), ..) => {
             // winit-next
             // &WindowEvent::MouseWheel{ delta: MouseScrollDelta::LineDelta(_, y), ..} => {
+                // general double/half zoom for fast view changes
+                let factor = if y < 0. { state.zoom } else { state.zoom / 2. };
+
+
                 let zoom_to = state.screen_to_world(self.last_position);
-                state.zoom -= 0.1 * y as f32;
+                state.zoom -= factor * y as f32;
                 if state.zoom < MAX_ZOOM {
                     // enforce max zoom
                     state.zoom = MAX_ZOOM;
                 }
                 let zoomed_to = state.screen_to_world(self.last_position);
-                state.origin += zoom_to - zoomed_to;
-                debug!("wheel:zoom -> {:.1} toward ({:.3},{:.3})", state.zoom, zoom_to.x, zoom_to.y);
+                state.origin += zoom_to - zoomed_to; // preserve pre-zoom cursor world position
+                debug!("wheel:zoom -> {:.2} toward ({:.3},{:.3})", state.zoom, zoom_to.x, zoom_to.y);
             }
             &WindowEvent::MouseInput(ElementState::Pressed, MouseButton::Left) =>
             // winit-next
