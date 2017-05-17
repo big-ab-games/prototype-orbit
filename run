@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-RUST_LOG=gfx_sdl=debug rustup run stable cargo run
+RUST_BACKTRACE=full RUST_LOG=gfx_sdl=debug rustup run stable cargo run

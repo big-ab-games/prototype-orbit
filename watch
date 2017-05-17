@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-nodemon -e rs --exec ./run
+nodemon -e rs --ignore 'target/*' --exec ./run

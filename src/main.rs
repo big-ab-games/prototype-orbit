@@ -182,6 +182,19 @@ pub fn main() {
                 }
                 user_mouse.handle(&mut *user_lock, delta as f32, &event);
             });
+            // winit-next
+            // events_loop.poll_events(|window_device_event| {
+            //     if let Event::WindowEvent{ event, .. } = window_device_event {
+            //         match event {
+            //             WindowEvent::KeyboardInput {
+            //                 input: KeyboardInput { virtual_keycode: Some(VirtualKeyCode::Escape), .. },
+            //                 .. } |
+            //             WindowEvent::Closed => user_lock.wants_out = true,
+            //             _ => {}
+            //         }
+            //         user_mouse.handle(&mut *user_lock, delta as f32, &event);
+            //     }
+            // });
             mem::drop(user_lock);
 
             delta_sum += delta;

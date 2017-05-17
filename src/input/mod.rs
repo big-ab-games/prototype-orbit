@@ -49,6 +49,9 @@ impl UserState {
 pub struct UserMouse {
     left_down: Option<(i32, i32)>,
     last_position: (i32, i32),
+    // winit-next
+    // left_down: Option<(f64, f64)>,
+    // last_position: (f64, f64),
 }
 
 impl UserMouse {
@@ -62,6 +65,8 @@ impl UserMouse {
     pub fn handle(&mut self, state: &mut UserState, _delta: f32, event: &WindowEvent) {
         match event {
             &WindowEvent::MouseWheel(MouseScrollDelta::LineDelta(_, y), ..) => {
+            // winit-next
+            // &WindowEvent::MouseWheel{ delta: MouseScrollDelta::LineDelta(_, y), ..} => {
                 state.zoom -= 0.1 * y as f32;
                 if state.zoom < MAX_ZOOM {
                     // enforce max zoom
@@ -70,14 +75,20 @@ impl UserMouse {
                 debug!("wheel:zoom -> {}", state.zoom);
             }
             &WindowEvent::MouseInput(ElementState::Pressed, MouseButton::Left) =>
+            // winit-next
+            // &WindowEvent::MouseInput{ state: ElementState::Pressed, button: MouseButton::Left, ..} =>
                 self.left_down = Some(self.last_position),
             &WindowEvent::MouseInput(ElementState::Released, MouseButton::Left) => {
+            // winit-next
+            // &WindowEvent::MouseInput{ state: ElementState::Released, button: MouseButton::Left, ..} => {
                 if self.left_down.is_some() {
                     debug!("left-drag {:?} -> {:?}", self.left_down.unwrap(), self.last_position);
                     self.left_down = None;
                 }
             },
             &WindowEvent::MouseMoved(x, y) => {
+            // winit-next
+            // &WindowEvent::MouseMoved{ position: (x, y), ..} => {
                 if self.left_down.is_some() {
                     let (lastx, lasty) = self.last_position;
 
