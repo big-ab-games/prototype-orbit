@@ -9,11 +9,12 @@ extern crate image;
 extern crate cgmath;
 extern crate gfx_text;
 extern crate notify;
+extern crate easer;
 
 mod input;
 mod state;
 mod svsc;
-// mod ease;
+mod ease;
 
 use std::sync::{Arc, Mutex};
 use std::mem;
@@ -159,12 +160,12 @@ pub fn main() {
 
     let (width_px, height_px) = window.get_inner_size_pixels().unwrap();
     let user_state = Arc::new(Mutex::new(UserState::new(width_px, height_px)));
-    // let (mut user_state_get, render_user_state) = svsc::channel(UserState::new(width_px, height_px));
     let (mut cps_get, render_cps) = svsc::channel(0u32);
 
     let c_user_state = user_state.clone();
     thread::spawn(move|| {
         let mut last_event = start;
+        let mut tasks = Tasks::new();
         let mut user_mouse = UserMouse::new();
 
         const DESIRED_CPS: u32 = 1080;
@@ -183,8 +184,9 @@ pub fn main() {
                     WindowEvent::Closed => user_lock.wants_out = true,
                     _ => {}
                 }
-                user_mouse.handle(&mut *user_lock, delta as f32, &event);
+                user_mouse.handle(&mut *user_lock, delta as f32, &event, &mut tasks);
             });
+            tasks.update(&mut *user_lock);
             // winit-next
             // events_loop.poll_events(|window_device_event| {
             //     if let Event::WindowEvent{ event, .. } = window_device_event {

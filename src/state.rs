@@ -1,4 +1,8 @@
 use cgmath::*;
+use std::fmt::Debug;
+use std::any::Any;
+use ease::*;
+use time;
 
 #[derive(Clone, Debug)]
 pub struct UserState {
@@ -16,7 +20,7 @@ fn birds_eye_at_z(height: f32) -> Matrix4<f32> {
     view
 }
 
-impl UserState {
+impl<'a> UserState {
     pub fn new(screen_width: u32, screen_height: u32) -> UserState {
         UserState {
             origin: Vector2::new(0.0f32, 0.0),
