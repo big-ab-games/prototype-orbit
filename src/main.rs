@@ -10,6 +10,7 @@ extern crate cgmath;
 extern crate gfx_text;
 extern crate notify;
 extern crate easer;
+extern crate num_traits;
 
 mod input;
 mod state;

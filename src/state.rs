@@ -1,8 +1,4 @@
 use cgmath::*;
-use std::fmt::Debug;
-use std::any::Any;
-use ease::*;
-use time;
 
 #[derive(Clone, Debug)]
 pub struct UserState {

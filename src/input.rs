@@ -22,7 +22,7 @@ impl Zoomer {
         let new_origin = current.origin + zoom_to - zoomed_to;
 
         Zoomer {
-            easer: Easer::using32(Expo::ease_out)
+            easer: Easer::using(Expo::ease_out)
                     .start(time::precise_time_s() as f32)
                     .duration(1.0)
                     .add_transition(current.zoom, zoom)

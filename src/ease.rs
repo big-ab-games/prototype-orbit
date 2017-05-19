@@ -11,77 +11,73 @@ pub struct Easer<T> {
     easing: fn(T, T, T, T) -> T,
 }
 
-macro_rules! implement_easer {
-    ($x:ty, using -> $using_name:ident, linear -> $linear_name:ident) => {
-        impl Easer<$x> {
-            pub fn $using_name(easing: fn($x, $x, $x, $x) -> $x) -> Easer<$x> {
-                Easer {
-                    start: 0.0,
-                    duration: 0.0,
-                    transitions: Vec::new(),
-                    easing: easing,
-                }
-            }
+use num_traits::{Float, Zero};
 
-            pub fn $linear_name() -> Easer<$x> {
-                fn linear_easing(t: $x, b: $x, c: $x, d: $x) -> $x {
-                    c * t / d + b
-                }
-                Easer::$using_name(linear_easing)
-            }
-
-            pub fn start<T: Into<$x>>(mut self, start: T) -> Easer<$x> {
-                self.start = start.into();
-                self
-            }
-
-            pub fn duration<T: Into<$x>>(mut self, duration: T) -> Easer<$x> {
-                self.duration = duration.into();
-                self
-            }
-
-            pub fn add_transition<T: Into<$x>, V: Into<$x>>(mut self, from: T, to: V) -> Easer<$x> {
-                self.transitions.push((from.into(), to.into()));
-                self
-            }
-
-            fn out_of_bound_values_at(&self, time: $x) -> Option<Vec<$x>> {
-                let delta = time - self.start;
-                if delta <= 0. {
-                    return Some(self.transitions.iter().map(|t| t.0).collect());
-                }
-                if delta >= self.duration {
-                    return Some(self.transitions.iter().map(|t| t.1).collect());
-                }
-                None
-            }
-
-            pub fn values_at<T: Into<$x>>(&self, time: T) -> Vec<$x> {
-                let time: $x = time.into();
-                if let Some(vals) = self.out_of_bound_values_at(time) {
-                    return vals;
-                }
-                let t = time - self.start;
-                let d = self.duration;
-                self.transitions.iter()
-                    .map(|transition| {
-                        let b = transition.0;
-                        let c = transition.1 - transition.0;
-                        (self.easing)(t, b, c, d)
-                    })
-                    .collect()
-            }
-
-            pub fn has_finished<T: Into<$x>>(&self, time: T) -> bool {
-                let time: $x = time.into();
-                time > self.start + self.duration
-            }
-        }
-    }
+fn linear_easing<F: Float>(t: F, b: F, c: F, d: F) -> F {
+    c * t / d + b
 }
 
-implement_easer!(f64, using -> using, linear -> linear);
-implement_easer!(f32, using -> using32, linear -> linear32);
+impl<F: Float + Zero> Easer<F> {
+    pub fn using(easing: fn(F, F, F, F) -> F) -> Easer<F> {
+        Easer {
+            start: F::zero(),
+            duration: F::zero(),
+            transitions: Vec::new(),
+            easing: easing,
+        }
+    }
+
+    pub fn linear() -> Easer<F> {
+        Easer::using(linear_easing)
+    }
+
+    pub fn start<T: Into<F>>(mut self, start: T) -> Easer<F> {
+        self.start = start.into();
+        self
+    }
+
+    pub fn duration<T: Into<F>>(mut self, duration: T) -> Easer<F> {
+        self.duration = duration.into();
+        self
+    }
+
+    pub fn add_transition<T: Into<F>, V: Into<F>>(mut self, from: T, to: V) -> Easer<F> {
+        self.transitions.push((from.into(), to.into()));
+        self
+    }
+
+    fn out_of_bound_values_at(&self, time: F) -> Option<Vec<F>> {
+        let delta = time - self.start;
+        if delta <= F::zero() {
+            return Some(self.transitions.iter().map(|t| t.0).collect());
+        }
+        if delta >= self.duration {
+            return Some(self.transitions.iter().map(|t| t.1).collect());
+        }
+        None
+    }
+
+    pub fn values_at<T: Into<F>>(&self, time: T) -> Vec<F> {
+        let time: F = time.into();
+        if let Some(vals) = self.out_of_bound_values_at(time) {
+            return vals;
+        }
+        let t = time - self.start;
+        let d = self.duration;
+        self.transitions.iter()
+            .map(|transition| {
+                let b = transition.0;
+                let c = transition.1 - transition.0;
+                (self.easing)(t, b, c, d)
+            })
+            .collect()
+    }
+
+    pub fn has_finished<T: Into<F>>(&self, time: T) -> bool {
+        let time: F = time.into();
+        time > self.start + self.duration
+    }
+}
 
 #[cfg(test)]
 mod ease_test {
@@ -121,44 +117,113 @@ mod ease_test {
     }
 
     #[test]
-    fn linear() {
-        let easer = Easer::linear()
+    fn linear_64() {
+        let easer = Easer::<f32>::linear()
             .duration(TEST_DURATION)
             .start(TEST_START)
             .add_transition(TEST_FROM, TEST_TO);
-        check!(easer; f64);
-    }
 
-    #[test]
-    fn linear_32() {
-        let easer = Easer::linear32()
-            .duration(TEST_DURATION)
-            .start(TEST_START)
-            .add_transition(TEST_FROM, TEST_TO);
+        println!("32: {:?}", easer.values_at(1234.4));
         check!(easer; f32);
     }
 
     #[test]
-    fn easer_functions_32() {
-        use easer::functions::*;
-
-        let circ_in = Easer::using32(Circ::ease_in)
+    fn linear_32() {
+        let easer = Easer::<f64>::linear()
             .duration(TEST_DURATION)
             .start(TEST_START)
             .add_transition(TEST_FROM, TEST_TO);
 
-        let expo_out = Easer::using32(Expo::ease_out)
+        println!("64: {:?}", easer.values_at(1234.4));
+        check!(easer; f64);
+    }
+
+    // #[test]
+    // fn easer_functions_32() {
+    //     use easer::functions::*;
+    //
+    //     let circ_in = Easer::using(Circ::ease_in)
+    //         .duration(TEST_DURATION)
+    //         .start(TEST_START)
+    //         .add_transition(TEST_FROM, TEST_TO);
+    //
+    //     let expo_out = Easer::using(Expo::ease_out)
+    //         .duration(TEST_DURATION)
+    //         .start(TEST_START)
+    //         .add_transition(TEST_FROM, TEST_TO);
+    //
+    //     let sin_in_out = Easer::using(Sine::ease_in_out)
+    //         .duration(TEST_DURATION)
+    //         .start(TEST_START)
+    //         .add_transition(TEST_FROM, TEST_TO);
+    //
+    //     check!(circ_in; f32);
+    //     check!(expo_out; f32);
+    //     check!(sin_in_out; f32);
+    // }
+
+    pub trait Easing<F: Float> {
+        fn ease_in(t: F, b: F, c: F, d: F) -> F;
+        fn ease_out(t: F, b: F, c: F, d: F) -> F;
+        fn ease_in_out(t: F, b: F, c: F, d: F) -> F;
+    }
+
+    pub struct Cubic;
+
+    use num_traits;
+    use num_traits::Float;
+
+    #[inline]
+    fn f<F: Float>(x: f32) -> F {
+        num_traits::cast(x).expect("cast failed, are you using non f32,f64 types?")
+    }
+
+    impl<F: Float> Easing<F> for Cubic {
+        fn ease_in(t: F, b: F, c: F, d: F) -> F {
+            let t = t / d;
+            c * (t * t * t) + b
+        }
+
+        fn ease_out(t: F, b: F, c: F, d: F) -> F {
+            let t = t / d - f(1.0);
+            c * ((t * t * t) + f(1.0)) + b
+        }
+
+        fn ease_in_out(t: F, b: F, c: F, d: F) -> F {
+            let t = t / (d / f(2.0));
+            if t < f(1.0) {
+                c / f(2.0) * (t * t * t) + b
+            }
+            else {
+                let t = t - f(2.0);
+                c / f(2.0) * (t * t * t + f(2.0)) + b
+            }
+        }
+    }
+
+    #[test]
+    fn generic_32() {
+        let cubic_in = Easer::<f32>::using(Cubic::ease_in)
             .duration(TEST_DURATION)
             .start(TEST_START)
             .add_transition(TEST_FROM, TEST_TO);
 
-        let sin_in_out = Easer::using32(Sine::ease_in_out)
+        let val = cubic_in.values_at(TEST_START + TEST_DURATION / 2.0);
+        println!("32: {:?}", val);
+
+        check!(cubic_in; f32);
+    }
+
+    #[test]
+    fn generic_64() {
+        let cubic_in = Easer::<f64>::using(Cubic::ease_in)
             .duration(TEST_DURATION)
             .start(TEST_START)
             .add_transition(TEST_FROM, TEST_TO);
 
-        check!(circ_in; f32);
-        check!(expo_out; f32);
-        check!(sin_in_out; f32);
+        let val = cubic_in.values_at(TEST_START + TEST_DURATION / 2.0);
+        println!("64: {:?}", val);
+
+        check!(cubic_in; f64);
     }
 }

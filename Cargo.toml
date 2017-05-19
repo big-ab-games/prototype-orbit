@@ -17,6 +17,7 @@ image = "0"
 cgmath = "0"
 notify = "4"
 easer = "0"
+num-traits = "0"
 
 # [replace]
 # "glutin:0.8.0" = { git = "https://github.com/alexheretic/glutin" }
