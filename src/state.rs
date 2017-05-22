@@ -16,7 +16,7 @@ fn birds_eye_at_z(height: f32) -> Matrix4<f32> {
     view
 }
 
-impl<'a> UserState {
+impl UserState {
     pub fn new(screen_width: u32, screen_height: u32) -> UserState {
         UserState {
             origin: Vector2::new(0.0f32, 0.0),

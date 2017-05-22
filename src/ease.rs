@@ -82,6 +82,7 @@ impl<F: Float + Zero> Easer<F> {
 #[cfg(test)]
 mod ease_test {
     use super::*;
+    use easer::functions::*;
 
     type F = f32;
     const SMALL_ENOUGH: F = 0.000000001;
@@ -117,8 +118,8 @@ mod ease_test {
     }
 
     #[test]
-    fn linear_64() {
-        let easer = Easer::<f32>::linear()
+    fn linear_32() {
+        let easer: Easer<f32> = Easer::linear()
             .duration(TEST_DURATION)
             .start(TEST_START)
             .add_transition(TEST_FROM, TEST_TO);
@@ -128,7 +129,7 @@ mod ease_test {
     }
 
     #[test]
-    fn linear_32() {
+    fn linear_64() {
         let easer = Easer::<f64>::linear()
             .duration(TEST_DURATION)
             .start(TEST_START)
@@ -136,69 +137,6 @@ mod ease_test {
 
         println!("64: {:?}", easer.values_at(1234.4));
         check!(easer; f64);
-    }
-
-    // #[test]
-    // fn easer_functions_32() {
-    //     use easer::functions::*;
-    //
-    //     let circ_in = Easer::using(Circ::ease_in)
-    //         .duration(TEST_DURATION)
-    //         .start(TEST_START)
-    //         .add_transition(TEST_FROM, TEST_TO);
-    //
-    //     let expo_out = Easer::using(Expo::ease_out)
-    //         .duration(TEST_DURATION)
-    //         .start(TEST_START)
-    //         .add_transition(TEST_FROM, TEST_TO);
-    //
-    //     let sin_in_out = Easer::using(Sine::ease_in_out)
-    //         .duration(TEST_DURATION)
-    //         .start(TEST_START)
-    //         .add_transition(TEST_FROM, TEST_TO);
-    //
-    //     check!(circ_in; f32);
-    //     check!(expo_out; f32);
-    //     check!(sin_in_out; f32);
-    // }
-
-    pub trait Easing<F: Float> {
-        fn ease_in(t: F, b: F, c: F, d: F) -> F;
-        fn ease_out(t: F, b: F, c: F, d: F) -> F;
-        fn ease_in_out(t: F, b: F, c: F, d: F) -> F;
-    }
-
-    pub struct Cubic;
-
-    use num_traits;
-    use num_traits::Float;
-
-    #[inline]
-    fn f<F: Float>(x: f32) -> F {
-        num_traits::cast(x).expect("cast failed, are you using non f32,f64 types?")
-    }
-
-    impl<F: Float> Easing<F> for Cubic {
-        fn ease_in(t: F, b: F, c: F, d: F) -> F {
-            let t = t / d;
-            c * (t * t * t) + b
-        }
-
-        fn ease_out(t: F, b: F, c: F, d: F) -> F {
-            let t = t / d - f(1.0);
-            c * ((t * t * t) + f(1.0)) + b
-        }
-
-        fn ease_in_out(t: F, b: F, c: F, d: F) -> F {
-            let t = t / (d / f(2.0));
-            if t < f(1.0) {
-                c / f(2.0) * (t * t * t) + b
-            }
-            else {
-                let t = t - f(2.0);
-                c / f(2.0) * (t * t * t + f(2.0)) + b
-            }
-        }
     }
 
     #[test]
