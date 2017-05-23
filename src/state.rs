@@ -20,7 +20,7 @@ impl UserState {
     pub fn new(screen_width: u32, screen_height: u32) -> UserState {
         UserState {
             origin: Vector2::new(0.0f32, 0.0),
-            zoom: 1.0f32,
+            zoom: 8.0f32,
             screen_width,
             screen_height,
             view: birds_eye_at_z(1.0),

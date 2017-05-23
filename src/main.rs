@@ -15,6 +15,7 @@ extern crate num_traits;
 mod input;
 mod state;
 mod svsc;
+mod orbitbody;
 mod ease;
 
 use std::sync::{Arc, Mutex};
@@ -34,53 +35,22 @@ use std::error::Error;
 use std::io::prelude::*;
 use input::*;
 use state::*;
+use orbitbody::OrbitBody;
 
 pub type ColorFormat = gfx::format::Srgba8;
 pub type DepthFormat = gfx::format::DepthStencil;
 
-#[derive(VertexData, Debug, Clone)]
-pub struct Vertex {
-    position: [f32; 2],
-    tex_coords: [f32; 2],
-}
 
 gfx_defines! {
-    constant Uniforms {
-        ms_ticks: f32 = "u_ticks",
+    constant Time {
+        ms_ticks: f32 = "ticks",
     }
 
     constant Transform {
-        u_view: [[f32; 4]; 4] = "u_view",
-        u_proj: [[f32; 4]; 4] = "u_proj",
-    }
-
-    pipeline pipe {
-        vbuf: gfx::VertexBuffer<Vertex> = (),
-        out: gfx::RenderTarget<ColorFormat> = "some_target",
-        u_vals: gfx::ConstantBuffer<Uniforms> = "u_vals",
-        u_transform: gfx::ConstantBuffer<Transform> = "u_transform",
-        t_happy: gfx::TextureSampler<[f32; 4]> = "t_happy",
-        t_sad: gfx::TextureSampler<[f32; 4]> = "t_sad",
+        view: [[f32; 4]; 4] = "view",
+        proj: [[f32; 4]; 4] = "proj",
     }
 }
-
-const QUAD: [Vertex; 4] = [Vertex {
-                               position: [-0.5, 0.5],
-                               tex_coords: [0.0, 0.0], // top-left
-                           },
-                           Vertex {
-                               position: [0.5, 0.5],
-                               tex_coords: [1.0, 0.0], // top-right
-                           },
-
-                           Vertex {
-                               position: [0.5, -0.5],
-                               tex_coords: [1.0, 1.0], // bottom-right
-                           },
-                           Vertex {
-                               position: [-0.5, -0.5],
-                               tex_coords: [0.0, 1.0], // bottom-left
-                           }];
 
 const CLEAR_COLOR: [f32; 4] = [0.05, 0.05, 0.05, 1.0];
 
@@ -100,21 +70,24 @@ pub fn load_texture<R, F>(factory: &mut F,
         .1
 }
 
-fn load_pipeline_state<R, F>(factory: &mut F) -> Result<gfx::PipelineState<R, pipe::Meta>, Box<Error>> where R: gfx::Resources,
-      F: gfx::Factory<R> {
+pub fn load_pipeline_state<R, F, I>(factory: &mut F, init: I)
+                                    -> Result<gfx::PipelineState<R, I::Meta>, Box<Error>>
+    where R: gfx::Resources,
+          F: gfx::Factory<R>,
+          I: gfx::pso::PipelineInit
+{
     let mut fragment_shader = Vec::new();
     File::open("src/shader/some.frag.glsl")?.read_to_end(&mut fragment_shader)?;
     let mut vertex_shader = Vec::new();
     File::open("src/shader/some.vert.glsl")?.read_to_end(&mut vertex_shader)?;
     let set = factory.create_shader_set(&vertex_shader, &fragment_shader)?;
-    Ok(factory
-        .create_pipeline_state(&set,
-                               gfx::Primitive::TriangleList,
-                               gfx::state::Rasterizer {
-                                   samples: Some(gfx::state::MultiSample {}),
-                                   ..gfx::state::Rasterizer::new_fill()
-                               },
-                               pipe::new())?)
+    Ok(factory.create_pipeline_state(&set,
+                                     gfx::Primitive::TriangleList,
+                                     gfx::state::Rasterizer {
+                                         samples: Some(gfx::state::MultiSample {}),
+                                         ..gfx::state::Rasterizer::new_fill()
+                                     },
+                                     init)?)
 }
 
 pub fn main() {
@@ -134,26 +107,9 @@ pub fn main() {
     window.set_position(2560 / 2 + 100, 100); // for development purposes
 
     let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
-    let happy_texture = load_texture(&mut factory, include_bytes!("img/screg_600_happy.png"));
-    let sad_texture = load_texture(&mut factory, include_bytes!("img/screg_600_sad.png"));
-    let sampler = factory.create_sampler(
-        texture::SamplerInfo::new(texture::FilterMethod::Anisotropic(16), texture::WrapMode::Mirror));
-
-    let mut pso = load_pipeline_state(&mut factory).expect("!load_pipeline_state");
+    let mut orbit_drawer = orbitbody::visual::OrbitBodyDrawer::new(&mut factory, main_color.clone());
 
     let mut fps_txt = gfx_text::new(factory.clone()).with_size(14).unwrap();
-
-    let (vertex_buffer, slice) =
-        factory.create_vertex_buffer_with_slice(&QUAD, &[0u16, 1, 2, 0, 2, 3] as &[u16]);
-
-    let data = pipe::Data {
-        vbuf: vertex_buffer,
-        out: main_color.clone(),
-        u_vals: factory.create_constant_buffer(1),
-        u_transform: factory.create_constant_buffer(1),
-        t_happy: (happy_texture, sampler.clone()),
-        t_sad: (sad_texture, sampler),
-    };
 
     let start = time::precise_time_s();
     let mut passed = time::precise_time_s() - start;
@@ -229,26 +185,33 @@ pub fn main() {
     let mut watcher = watcher(tx, Duration::from_millis(100)).unwrap();
     watcher.watch(Path::new("src/shader").canonicalize().unwrap(), RecursiveMode::Recursive).unwrap();
 
+    let orbitbodies = vec!(
+        OrbitBody { center: (0.0, 0.0).into(), radius: 1.0 },
+        OrbitBody { center: (3.0, 3.0).into(), radius: 2.0 },
+        OrbitBody { center: (0.0, -4.0).into(), radius: 1.5 });
+
     loop {
         // reload shaders if changed
-        if let Ok(notify::DebouncedEvent::NoticeWrite(path)) = shader_changes.try_recv() {
-           info!("{:?} changed", path);
-           match load_pipeline_state(&mut factory) {
-               Ok(new_pso) => pso = new_pso,
-               Err(err) => error!("{:?}", err)
-           };
-        }
+        // if let Ok(notify::DebouncedEvent::NoticeWrite(path)) = shadeate_constant_buffer(&data.u_vals,
+        //                                &Uniforms { ms_ticks: (passed * 1000.0) as f32 });
+        //
+        // encoder.update_constant_buffer(&data.u_transform, &Transform {
+        //     u_view: user_lock.view.into(),
+        //     u_proj: user_lock.projection().into(),
+        // });r_changes.try_recv() {
+        //    info!("{:?} changed", path);
+        //    match load_pipeline_state(&mut factory, pipe::new()) {
+        //        Ok(new_pso) => pso = new_pso,
+        //        Err(err) => error!("{:?}", err)
+        //    };
+        // }
 
         let last_passed = passed;
         passed = time::precise_time_s() - start;
         let delta = passed - last_passed;
         recent_frames.push(delta);
 
-        let user_lock = user_state.lock().unwrap();
-        if user_lock.wants_out {
-            info!("Quitting");
-            break;
-        }
+
 
         if recent_frames.len() >= 250 {
             let sum: f64 = recent_frames.iter().sum();
@@ -269,18 +232,24 @@ pub fn main() {
                                  [0.3, 0.6, 0.8, 1.0]);
         }
 
-        encoder.update_constant_buffer(&data.u_vals,
-                                       &Uniforms { ms_ticks: (passed * 1000.0) as f32 });
+        let user_lock = user_state.lock().unwrap();
+        if user_lock.wants_out {
+            info!("Quitting");
+            break;
+        }
 
-        encoder.update_constant_buffer(&data.u_transform, &Transform {
-            u_view: user_lock.view.into(),
-            u_proj: user_lock.projection().into(),
-        });
+        let transform = Transform {
+            view: user_lock.view.into(),
+            proj: user_lock.projection().into(),
+        };
+        let time = Time { ms_ticks: (passed * 1000.0) as f32 };
 
         mem::drop(user_lock);
 
-        encoder.clear(&data.out, CLEAR_COLOR);
-        encoder.draw(&slice, &pso, &data);
+        encoder.clear(&main_color, CLEAR_COLOR);
+
+        orbit_drawer.draw(&mut factory, &mut encoder, &time, &transform, &orbitbodies);
+
         fps_txt.draw(&mut encoder, &main_color).unwrap();
         encoder.flush(&mut device);
         window.swap_buffers().unwrap();
