@@ -13,6 +13,7 @@ pub struct Easer<T> {
 
 use num_traits::{Float, Zero};
 
+#[allow(dead_code)]
 fn linear_easing<F: Float>(t: F, b: F, c: F, d: F) -> F {
     c * t / d + b
 }
@@ -27,6 +28,7 @@ impl<F: Float + Zero> Easer<F> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn linear() -> Easer<F> {
         Easer::using(linear_easing)
     }

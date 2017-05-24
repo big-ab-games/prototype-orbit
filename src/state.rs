@@ -1,5 +1,12 @@
 use cgmath::*;
 
+#[derive(Debug, Clone, Copy)]
+pub enum RenderQuality {
+    Normal,
+    Sample2x2,
+    Sample3x3
+}
+
 #[derive(Clone, Debug)]
 pub struct UserState {
     pub origin: Vector2<f32>,
@@ -8,6 +15,7 @@ pub struct UserState {
     pub screen_height: u32,
     pub view: Matrix4<f32>,
     pub wants_out: bool,
+    pub quality: RenderQuality
 }
 
 fn birds_eye_at_z(height: f32) -> Matrix4<f32> {
@@ -25,6 +33,7 @@ impl UserState {
             screen_height,
             view: birds_eye_at_z(1.0),
             wants_out: false,
+            quality: RenderQuality::Normal,
         }
     }
 
@@ -33,8 +42,8 @@ impl UserState {
               self.origin.x + self.zoom * self.aspect_ratio(),
               self.origin.y - self.zoom,
               self.origin.y + self.zoom,
-              0.0,
-              100.0)
+              1.0,
+              -1.0)
     }
 
     pub fn aspect_ratio(&self) -> f32 {
@@ -47,6 +56,14 @@ impl UserState {
         let x_world = self.zoom * self.aspect_ratio() * (pixels.x as f32 * 2.0 / self.screen_width as f32 - 1f32);
         let y_world = self.zoom * (-pixels.y as f32 * 2.0 / self.screen_height as f32 + 1f32);
         Vector2::new(x_world, y_world)
+    }
+
+    pub fn one_pixel_in_screen(&self) -> (f32, f32) {
+        // pixel width = :screen_width, screen space width = 2az
+        // pixel height = screen_height, screen space height = 2z
+
+        (2.0 * self.aspect_ratio() * self.zoom / self.screen_width as f32,
+         2.0 * self.zoom / self.screen_height as f32)
     }
 }
 

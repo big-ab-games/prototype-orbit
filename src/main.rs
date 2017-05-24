@@ -15,30 +15,25 @@ extern crate num_traits;
 mod input;
 mod state;
 mod svsc;
+mod background;
 mod orbitbody;
 mod ease;
+mod psobuilder;
 
 use std::sync::{Arc, Mutex};
 use std::mem;
-use gfx::traits::{FactoryExt, Factory};
-use gfx::{texture, Device};
+use gfx::{Device};
 use glutin::*;
 use std::io::Cursor;
 use std::thread;
 use gfx_text::{HorizontalAnchor, VerticalAnchor};
-use notify::{Watcher, RecursiveMode, watcher};
-use std::sync::mpsc::channel;
 use std::time::Duration;
-use std::path::Path;
-use std::fs::File;
-use std::error::Error;
-use std::io::prelude::*;
 use input::*;
 use state::*;
 use orbitbody::OrbitBody;
 
 pub type ColorFormat = gfx::format::Srgba8;
-pub type DepthFormat = gfx::format::DepthStencil;
+pub type DepthFormat = gfx::format::Depth;
 
 
 gfx_defines! {
@@ -52,7 +47,7 @@ gfx_defines! {
     }
 }
 
-const CLEAR_COLOR: [f32; 4] = [0.05, 0.05, 0.05, 1.0];
+const CLEAR_COLOR: [f32; 4] = [0.05, 0.05, 0.05, 0.0];
 
 pub fn load_texture<R, F>(factory: &mut F,
                           data: &[u8])
@@ -70,26 +65,6 @@ pub fn load_texture<R, F>(factory: &mut F,
         .1
 }
 
-pub fn load_pipeline_state<R, F, I>(factory: &mut F, init: I)
-                                    -> Result<gfx::PipelineState<R, I::Meta>, Box<Error>>
-    where R: gfx::Resources,
-          F: gfx::Factory<R>,
-          I: gfx::pso::PipelineInit
-{
-    let mut fragment_shader = Vec::new();
-    File::open("src/shader/some.frag.glsl")?.read_to_end(&mut fragment_shader)?;
-    let mut vertex_shader = Vec::new();
-    File::open("src/shader/some.vert.glsl")?.read_to_end(&mut vertex_shader)?;
-    let set = factory.create_shader_set(&vertex_shader, &fragment_shader)?;
-    Ok(factory.create_pipeline_state(&set,
-                                     gfx::Primitive::TriangleList,
-                                     gfx::state::Rasterizer {
-                                         samples: Some(gfx::state::MultiSample {}),
-                                         ..gfx::state::Rasterizer::new_fill()
-                                     },
-                                     init)?)
-}
-
 pub fn main() {
     pretty_env_logger::init().unwrap();
 
@@ -101,13 +76,14 @@ pub fn main() {
         .with_gl(GlRequest::Specific(Api::OpenGl, (3, 3)))
         .with_multisampling(8);
 
-    let (window, mut device, mut factory, main_color, mut _main_depth) =
+    let (window, mut device, mut factory, main_color, main_depth) =
             gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, &events_loop);
 
     window.set_position(2560 / 2 + 100, 100); // for development purposes
 
     let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
-    let mut orbit_drawer = orbitbody::visual::OrbitBodyDrawer::new(&mut factory, main_color.clone());
+    let mut orbit_drawer = orbitbody::visual::OrbitBodyDrawer::new(&mut factory, &main_color, &main_depth);
+    let mut background_vis = background::visual::BackgroundVis::new(&mut factory, &main_color, &main_depth);
 
     let mut fps_txt = gfx_text::new(factory.clone()).with_size(14).unwrap();
 
@@ -181,9 +157,6 @@ pub fn main() {
     const DESIRED_DETLA: f64 = 1.0 / DESIRED_FPS as f64;
 
     let mut fps: i64 = 0;
-    let (tx, shader_changes) = channel();
-    let mut watcher = watcher(tx, Duration::from_millis(100)).unwrap();
-    watcher.watch(Path::new("src/shader").canonicalize().unwrap(), RecursiveMode::Recursive).unwrap();
 
     let orbitbodies = vec!(
         OrbitBody { center: (0.0, 0.0).into(), radius: 1.0 },
@@ -191,27 +164,10 @@ pub fn main() {
         OrbitBody { center: (0.0, -4.0).into(), radius: 1.5 });
 
     loop {
-        // reload shaders if changed
-        // if let Ok(notify::DebouncedEvent::NoticeWrite(path)) = shadeate_constant_buffer(&data.u_vals,
-        //                                &Uniforms { ms_ticks: (passed * 1000.0) as f32 });
-        //
-        // encoder.update_constant_buffer(&data.u_transform, &Transform {
-        //     u_view: user_lock.view.into(),
-        //     u_proj: user_lock.projection().into(),
-        // });r_changes.try_recv() {
-        //    info!("{:?} changed", path);
-        //    match load_pipeline_state(&mut factory, pipe::new()) {
-        //        Ok(new_pso) => pso = new_pso,
-        //        Err(err) => error!("{:?}", err)
-        //    };
-        // }
-
         let last_passed = passed;
         passed = time::precise_time_s() - start;
         let delta = passed - last_passed;
         recent_frames.push(delta);
-
-
 
         if recent_frames.len() >= 250 {
             let sum: f64 = recent_frames.iter().sum();
@@ -238,17 +194,24 @@ pub fn main() {
             break;
         }
 
-        let transform = Transform {
-            view: user_lock.view.into(),
-            proj: user_lock.projection().into(),
-        };
-        let time = Time { ms_ticks: (passed * 1000.0) as f32 };
+        let projection = user_lock.projection();
+        let view = user_lock.view.clone();
 
+        let time = Time { ms_ticks: (passed * 1000.0) as f32 };
+        // let (px_x, px_y) = user_lock.one_pixel_in_screen();
+        // let render_quality = user_lock.quality; TODO implement supersampling
         mem::drop(user_lock);
 
         encoder.clear(&main_color, CLEAR_COLOR);
+        encoder.clear_depth(&main_depth, 1.0);
 
+        let transform = Transform {
+            view: view.into(),
+            proj: projection.into(),
+        };
+        
         orbit_drawer.draw(&mut factory, &mut encoder, &time, &transform, &orbitbodies);
+        background_vis.draw(&mut factory, &mut encoder, &transform);
 
         fps_txt.draw(&mut encoder, &main_color).unwrap();
         encoder.flush(&mut device);

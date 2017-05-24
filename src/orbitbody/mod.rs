@@ -8,8 +8,3 @@ pub struct OrbitBody {
     pub center: Vector2<f64>,
     pub radius: f64,
 }
-
-#[derive(VertexData, Debug, Clone)]
-pub struct Vertex {
-    position: [f32; 2],
-}

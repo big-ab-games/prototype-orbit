@@ -1,9 +1,9 @@
-use super::{Transform, Time, ColorFormat, OrbitBody, load_pipeline_state};
+use super::{Transform, Time, ColorFormat, DepthFormat, OrbitBody};
 use cgmath::Matrix4;
 use gfx::*;
-use std::cell::RefCell;
 use gfx::traits::FactoryExt;
 use gfx;
+use psobuilder::{PsoBuilder, PsoWatcher};
 
 #[derive(VertexData, Debug, Clone, Copy)]
 pub struct OrbitBodyVertex {
@@ -17,45 +17,80 @@ pub struct OrbitBodyTransform {
 }
 
 gfx_defines! {
-    pipeline pipe {
+    pipeline orbitbodypipe {
         vbuf: VertexBuffer<OrbitBodyVertex> = (),
         out: RenderTarget<ColorFormat> = "out_color",
+        out_depth: gfx::DepthTarget<DepthFormat> = preset::depth::LESS_EQUAL_WRITE,
         time: ConstantBuffer<Time> = "time",
         global_transform: ConstantBuffer<Transform> = "global_transform",
         local_transform: ConstantBuffer<OrbitBodyTransform> = "local_transform",
     }
 }
 
+// equilateral triangle with incircle radius 1, and incircle center (0, 0)
+// ref: https://rechneronline.de/pi/equilateral-triangle.php
+//    C
+//   /\
+//  /  \
+// /____\
+// A     B
+//
+// right-angle tri A, center, midAB
+//    (0,0)
+//   /| radius
+//  /_|
+// A  midAB
+//
+// A<->midAB = 6 / 2√3
+// midAB<->center = 1
+// A<->center = √((6 / 2√3)^2 + 1^2) = √(36 / 12 + 1) = 2
+//
+// A: (-6 / 2√3, -1)
+// B: (6 / 2√3, -1)
+// C: (0, 2)
+
+const ROOT3: f64 = 1.7320508075688774;
+const BX: f64 = (6.0 / (2.0 * ROOT3));
+
 const ORBIT_BODY_VERTICES: [OrbitBodyVertex; 3] = [
-    OrbitBodyVertex{ position: [0.0,0.5], local_idx: 0 },
-    OrbitBodyVertex{ position: [-0.5,-0.5], local_idx: 0 },
-    OrbitBodyVertex{ position: [0.5,-0.5], local_idx: 0 }];
+    OrbitBodyVertex{ position: [0.0, 2.0], local_idx: 0 },
+    OrbitBodyVertex{ position: [-BX as f32, -1.0], local_idx: 0 },
+    OrbitBodyVertex{ position: [BX as f32, -1.0], local_idx: 0 }];
 
 pub struct OrbitBodyDrawer<R: Resources> {
-    pso: PipelineState<R, pipe::Meta>,
+    pso: PipelineState<R, orbitbodypipe::Meta>,
     slice: Slice<R>,
-    data: pipe::Data<R>,
+    data: orbitbodypipe::Data<R>,
+
+    pso_builder: PsoWatcher<orbitbodypipe::Init<'static>>,
 }
 
 impl<R: Resources> OrbitBodyDrawer<R> {
     pub fn new<F>(factory: &mut F,
-                  target: handle::RenderTargetView<R, ColorFormat>)
+                  target: &handle::RenderTargetView<R, ColorFormat>,
+                  depth_target: &handle::DepthStencilView<R, DepthFormat>)
                   -> OrbitBodyDrawer<R>
         where F: Factory<R>
     {
-        let pso = load_pipeline_state(factory, pipe::new()).expect("!load_pipeline_state");
+        let pso_builder = PsoBuilder::new()
+            .vertex_shader("src/orbitbody/shader/vert.glsl")
+            .fragment_shader("src/orbitbody/shader/frag.glsl")
+            .init_struct(orbitbodypipe::new())
+            .watch("src/orbitbody/shader");
 
-        // let arr = [Vertex{ position: [0.0,0.5]}, Vertex{ position: [-0.5,-0.5]}, Vertex{ position: [0.5,-0.5]}];
+        let pso = pso_builder.build_with(factory).expect("OrbitBodyDrawer initial pso");
+
         let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&[], ());
-        let data = pipe::Data {
+        let data = orbitbodypipe::Data {
             vbuf: vertex_buffer,
-            out: target,
+            out: target.clone(),
+            out_depth: depth_target.clone(),
             time: factory.create_constant_buffer(1),
             global_transform: factory.create_constant_buffer(1),
             local_transform: factory.create_constant_buffer(0),
         };
 
-        OrbitBodyDrawer { pso, slice, data }
+        OrbitBodyDrawer { pso, slice, data, pso_builder }
     }
 
     pub fn draw<F, C>(&mut self,
@@ -64,6 +99,11 @@ impl<R: Resources> OrbitBodyDrawer<R> {
                       time: &Time,
                       transform: &Transform,
                       bodies: &[OrbitBody]) where F: Factory<R>, C: CommandBuffer<R> {
+        // reload shaders if changed
+        if let Some(pso) = self.pso_builder.recv_modified(factory) {
+            self.pso = pso;
+        }
+
         encoder.update_constant_buffer(&self.data.time, time);
         encoder.update_constant_buffer(&self.data.global_transform, transform);
 
@@ -79,7 +119,6 @@ impl<R: Resources> OrbitBodyDrawer<R> {
                     all_verts.push(vert);
                 }
             }
-            info!("creating vertices: {:?}", all_verts);
             let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(all_verts.as_slice(), ());
             self.data.vbuf = vertex_buffer;
             self.slice = slice;
@@ -95,5 +134,7 @@ impl<R: Resources> OrbitBodyDrawer<R> {
 }
 
 fn local_transform(body: &OrbitBody) -> [[f32; 4]; 4] {
-    Matrix4::from_translation([body.center.x as f32, body.center.y as f32, 0.0].into()).into()
+    let scale = Matrix4::from_nonuniform_scale(body.radius as f32, body.radius as f32, 1.0);
+    let translate = Matrix4::from_translation([body.center.x as f32, body.center.y as f32, 0.0].into());
+    (scale * translate).into()
 }

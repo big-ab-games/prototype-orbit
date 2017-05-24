@@ -122,7 +122,17 @@ impl UserMouse {
                     state.origin += movement;
                 }
                 self.last_position = (x, y);
-            }
+            },
+            &WindowEvent::KeyboardInput(ElementState::Pressed, _, Some(VirtualKeyCode::Q), _) => {
+                use state::RenderQuality::*;
+
+                state.quality = match state.quality {
+                    Normal => Sample2x2,
+                    Sample2x2 => Sample3x3,
+                    Sample3x3 => Normal
+                };
+                info!("Setting quality to {:?}", state.quality);
+            },
             _ => (),
         }
     }
