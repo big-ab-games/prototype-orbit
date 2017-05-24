@@ -57,7 +57,7 @@ const ORBIT_BODY_VERTICES: [OrbitBodyVertex; 3] = [
     OrbitBodyVertex{ position: [-BX as f32, -1.0], local_idx: 0 },
     OrbitBodyVertex{ position: [BX as f32, -1.0], local_idx: 0 }];
 
-pub struct OrbitBodyDrawer<R: Resources> {
+pub struct OrbitBodyBrush<R: Resources> {
     pso: PipelineState<R, orbitbodypipe::Meta>,
     slice: Slice<R>,
     data: orbitbodypipe::Data<R>,
@@ -65,11 +65,11 @@ pub struct OrbitBodyDrawer<R: Resources> {
     pso_builder: PsoWatcher<orbitbodypipe::Init<'static>>,
 }
 
-impl<R: Resources> OrbitBodyDrawer<R> {
+impl<R: Resources> OrbitBodyBrush<R> {
     pub fn new<F>(factory: &mut F,
                   target: &handle::RenderTargetView<R, ColorFormat>,
                   depth_target: &handle::DepthStencilView<R, DepthFormat>)
-                  -> OrbitBodyDrawer<R>
+                  -> OrbitBodyBrush<R>
         where F: Factory<R>
     {
         let pso_builder = PsoBuilder::new()
@@ -78,7 +78,7 @@ impl<R: Resources> OrbitBodyDrawer<R> {
             .init_struct(orbitbodypipe::new())
             .watch("src/orbitbody/shader");
 
-        let pso = pso_builder.build_with(factory).expect("OrbitBodyDrawer initial pso");
+        let pso = pso_builder.build_with(factory).expect("OrbitBodyBrush initial pso");
 
         let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&[], ());
         let data = orbitbodypipe::Data {
@@ -90,7 +90,7 @@ impl<R: Resources> OrbitBodyDrawer<R> {
             local_transform: factory.create_constant_buffer(0),
         };
 
-        OrbitBodyDrawer { pso, slice, data, pso_builder }
+        OrbitBodyBrush { pso, slice, data, pso_builder }
     }
 
     pub fn draw<F, C>(&mut self,

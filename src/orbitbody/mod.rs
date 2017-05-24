@@ -1,4 +1,4 @@
-pub mod visual;
+pub mod render;
 
 use super::*;
 use cgmath::Vector2;

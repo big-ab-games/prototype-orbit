@@ -24,7 +24,7 @@ const BACKGROUND_QUAD: [BackgroundVertex; 4] = [
     BackgroundVertex{ position: [10000.0, -10000.0] },
     BackgroundVertex{ position: [-10000.0, -10000.0] }];
 
-pub struct BackgroundVis<R: Resources> {
+pub struct BackgroundBrush<R: Resources> {
     pso: PipelineState<R, backgroundpipe::Meta>,
     slice: Slice<R>,
     data: backgroundpipe::Data<R>,
@@ -32,11 +32,11 @@ pub struct BackgroundVis<R: Resources> {
     pso_builder: PsoWatcher<backgroundpipe::Init<'static>>,
 }
 
-impl<R: Resources> BackgroundVis<R> {
+impl<R: Resources> BackgroundBrush<R> {
     pub fn new<F>(factory: &mut F,
                   target: &handle::RenderTargetView<R, ColorFormat>,
                   depth_target: &handle::DepthStencilView<R, DepthFormat>)
-                  -> BackgroundVis<R>
+                  -> BackgroundBrush<R>
         where F: Factory<R>
     {
         let pso_builder = PsoBuilder::new()
@@ -56,7 +56,7 @@ impl<R: Resources> BackgroundVis<R> {
             global_transform: factory.create_constant_buffer(1),
         };
 
-        BackgroundVis { pso, slice, data, pso_builder }
+        BackgroundBrush { pso, slice, data, pso_builder }
     }
 
     pub fn draw<F, C>(&mut self,

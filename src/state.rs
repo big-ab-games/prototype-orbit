@@ -1,4 +1,6 @@
 use cgmath::*;
+use OrbitBody;
+use debug::ComputeDebugInfo;
 
 #[derive(Debug, Clone, Copy)]
 pub enum RenderQuality {
@@ -8,14 +10,32 @@ pub enum RenderQuality {
 }
 
 #[derive(Clone, Debug)]
-pub struct UserState {
+pub struct State {
     pub origin: Vector2<f32>,
     pub zoom: f32,
     pub screen_width: u32,
     pub screen_height: u32,
     pub view: Matrix4<f32>,
-    pub wants_out: bool,
-    pub quality: RenderQuality
+    pub user_quit: bool,
+    pub quality: RenderQuality,
+    pub drawables: Drawables,
+    pub debug_info: ComputeDebugInfo,
+}
+
+#[derive(Clone, Debug)]
+pub struct Drawables {
+    pub orbit_bodies: Vec<OrbitBody>,
+}
+
+impl Drawables {
+    fn initial() -> Drawables {
+        Drawables {
+            orbit_bodies: vec!(
+                OrbitBody { center: (0.0, 0.0).into(), radius: 1.0 },
+                OrbitBody { center: (3.0, 3.0).into(), radius: 2.0 },
+                OrbitBody { center: (0.0, -4.0).into(), radius: 1.5 }),
+        }
+    }
 }
 
 fn birds_eye_at_z(height: f32) -> Matrix4<f32> {
@@ -24,16 +44,18 @@ fn birds_eye_at_z(height: f32) -> Matrix4<f32> {
     view
 }
 
-impl UserState {
-    pub fn new(screen_width: u32, screen_height: u32) -> UserState {
-        UserState {
+impl State {
+    pub fn new(screen_width: u32, screen_height: u32) -> State {
+        State {
             origin: Vector2::new(0.0f32, 0.0),
             zoom: 8.0f32,
             screen_width,
             screen_height,
             view: birds_eye_at_z(1.0),
-            wants_out: false,
+            user_quit: false,
             quality: RenderQuality::Normal,
+            drawables: Drawables::initial(),
+            debug_info: ComputeDebugInfo::initial(),
         }
     }
 
@@ -57,14 +79,6 @@ impl UserState {
         let y_world = self.zoom * (-pixels.y as f32 * 2.0 / self.screen_height as f32 + 1f32);
         Vector2::new(x_world, y_world)
     }
-
-    pub fn one_pixel_in_screen(&self) -> (f32, f32) {
-        // pixel width = :screen_width, screen space width = 2az
-        // pixel height = screen_height, screen space height = 2z
-
-        (2.0 * self.aspect_ratio() * self.zoom / self.screen_width as f32,
-         2.0 * self.zoom / self.screen_height as f32)
-    }
 }
 
 #[cfg(test)]
@@ -84,7 +98,7 @@ mod state_test {
     //        (1az,-1z)
     // :a aspect ratio
     // :z zoom
-    fn test_screen_to_world(s: UserState) {
+    fn test_screen_to_world(s: State) {
         let a = s.aspect_ratio();
         let z = s.zoom;
         assert_eq!(s.screen_to_world(Vector2::new(0, 0)),
@@ -106,7 +120,7 @@ mod state_test {
         //     ┌─┐
         //     └─┘
         //        (1,-1)
-        test_screen_to_world(UserState::new(100, 100));
+        test_screen_to_world(State::new(100, 100));
     }
 
     #[test]
@@ -117,7 +131,7 @@ mod state_test {
         //     ┌─┐
         //     └─┘
         //        (1a,-1)
-        test_screen_to_world(UserState::new(160, 90));
+        test_screen_to_world(State::new(160, 90));
     }
 
     #[test]
@@ -128,7 +142,7 @@ mod state_test {
         //     ┌─┐
         //     └─┘
         //        (1a,-1)
-        let mut state = UserState::new(160, 90);
+        let mut state = State::new(160, 90);
         state.zoom = 0.33f32;
         test_screen_to_world(state);
     }

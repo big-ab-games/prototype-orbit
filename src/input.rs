@@ -14,7 +14,7 @@ pub struct Zoomer {
 }
 
 impl Zoomer {
-    pub fn zoom_to(zoom: f32, sceen_location: (i32, i32), current: &UserState) -> Zoomer {
+    pub fn zoom_to(zoom: f32, sceen_location: (i32, i32), current: &State) -> Zoomer {
         let mut after_state = current.clone();
         after_state.zoom = zoom;
         let zoom_to = current.screen_to_world(sceen_location);
@@ -32,7 +32,7 @@ impl Zoomer {
     }
 
     /// :return still zooming (ie unfinsihed)
-    pub fn update(&self, state: &mut UserState) -> bool {
+    pub fn update(&self, state: &mut State) -> bool {
         let now = time::precise_time_s() as f32;
         let vals = self.easer.values_at(now);
         state.zoom = vals[0];
@@ -54,7 +54,7 @@ impl Tasks {
         Tasks { zoom: None }
     }
 
-    pub fn update(&mut self, mut state: &mut UserState) {
+    pub fn update(&mut self, mut state: &mut State) {
         if let Some(zoomer) = self.zoom.take() {
             if zoomer.update(&mut state) {
                 self.zoom = Some(zoomer);
@@ -79,7 +79,7 @@ impl UserMouse {
         }
     }
 
-    pub fn handle(&mut self, state: &mut UserState, _delta: f32, event: &WindowEvent, tasks: &mut Tasks) {
+    pub fn handle(&mut self, state: &mut State, _delta: f32, event: &WindowEvent, tasks: &mut Tasks) {
         match event {
             &WindowEvent::MouseWheel(MouseScrollDelta::LineDelta(_, y), ..) => {
             // winit-next
