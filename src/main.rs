@@ -30,6 +30,10 @@ use std::time::Duration;
 use state::*;
 use orbitbody::OrbitBody;
 
+
+const DESIRED_FPS: u32 = 256;
+const DESIRED_DETLA: f64 = 1.0 / DESIRED_FPS as f64;
+
 pub type ColorFormat = gfx::format::Srgba8;
 pub type DepthFormat = gfx::format::Depth;
 
@@ -91,8 +95,6 @@ pub fn main() {
     let mut background_brush = background::render::BackgroundBrush::new(&mut factory, &main_color, &main_depth);
     let mut debug_info_brush = debug::render::DebugInfoBrush::new(&factory);
 
-    const DESIRED_FPS: u32 = 250;
-    const DESIRED_DETLA: f64 = 1.0 / DESIRED_FPS as f64;
     let (mut delta_sum, mut delta_count) = (0.0, 0);
     let mut passed = time::precise_time_s() - start;
 
@@ -125,8 +127,8 @@ pub fn main() {
 
         delta_sum += delta;
         delta_count += 1;
-        if delta_count == DESIRED_FPS { // ie update around every second
-            mean_fps = (1.0 / (delta_sum / DESIRED_FPS as f64)).round() as u32;
+        if delta_sum >= 1.0 { // ie update around every second
+            mean_fps = (1.0 / (delta_sum / delta_count as f64)).round() as u32;
             delta_sum = 0.0;
             delta_count = 0;
         }

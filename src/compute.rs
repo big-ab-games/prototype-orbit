@@ -7,6 +7,9 @@ use state::*;
 use time;
 use cgmath::*;
 
+const DESIRED_CPS: u32 = 1_080;
+const DESIRED_DELTA: f64 = 1.0 / DESIRED_CPS as f64;
+
 const GRAVITY: f64 = 0.01;
 
 pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
@@ -16,8 +19,6 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
         let mut tasks = Tasks::new();
         let mut user_mouse = UserMouse::new();
 
-        const DESIRED_CPS: u32 = 1080;
-        const DESIRED_DELTA: f64 = 1.0 / DESIRED_CPS as f64;
         let (mut delta_sum, mut delta_count) = (0.0, 0);
         let mut state = initial_state;
         let mut last_loop = time::precise_time_s();
@@ -77,8 +78,8 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
 
             delta_sum += delta;
             delta_count += 1;
-            if delta_count == DESIRED_CPS { // ie update around every second
-                mean_cps = (1.0 / (delta_sum / DESIRED_CPS as f64)).round() as u32;
+            if delta_sum >= 1.0 { // ie update around every second
+                mean_cps = (1.0 / (delta_sum / delta_count as f64)).round() as u32;
                 delta_sum = 0.0;
                 delta_count = 0;
             }
