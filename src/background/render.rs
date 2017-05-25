@@ -1,4 +1,4 @@
-use super::{Transform, ColorFormat, DepthFormat};
+use super::{UserViewTransform, ColorFormat, DepthFormat};
 use gfx::*;
 use gfx::traits::FactoryExt;
 use gfx;
@@ -14,7 +14,7 @@ gfx_defines! {
         vbuf: VertexBuffer<BackgroundVertex> = (),
         out: RenderTarget<ColorFormat> = "out_color",
         out_depth: gfx::DepthTarget<DepthFormat> = gfx::preset::depth::LESS_EQUAL_WRITE,
-        global_transform: ConstantBuffer<Transform> = "global_transform",
+        global_transform: ConstantBuffer<UserViewTransform> = "global_transform",
     }
 }
 
@@ -62,7 +62,7 @@ impl<R: Resources> BackgroundBrush<R> {
     pub fn draw<F, C>(&mut self,
                       factory: &mut F,
                       encoder: &mut Encoder<R, C>,
-                      transform: &Transform) where F: Factory<R>, C: CommandBuffer<R> {
+                      transform: &UserViewTransform) where F: Factory<R>, C: CommandBuffer<R> {
         // reload shaders if changed
         if let Some(pso) = self.pso_builder.recv_modified(factory) {
             self.pso = pso;

@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-RUST_BACKTRACE=full RUST_LOG=gfx_test=debug rustup run stable cargo run
+RUST_BACKTRACE=full RUST_LOG=prototype_orbit=debug rustup run stable cargo run

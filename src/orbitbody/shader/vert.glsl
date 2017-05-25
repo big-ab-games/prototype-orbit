@@ -9,7 +9,7 @@ struct OrbitBodyTransform {
     mat4 transform;
 };
 uniform local_transform {
-    OrbitBodyTransform locals[3];
+    OrbitBodyTransform locals[1024];
 };
 
 in vec2 position;

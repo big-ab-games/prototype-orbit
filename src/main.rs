@@ -35,11 +35,11 @@ pub type DepthFormat = gfx::format::Depth;
 
 
 gfx_defines! {
-    constant Time {
+    constant ShaderTime {
         ms_ticks: f32 = "ticks",
     }
 
-    constant Transform {
+    constant UserViewTransform {
         view: [[f32; 4]; 4] = "view",
         proj: [[f32; 4]; 4] = "proj",
     }
@@ -111,19 +111,17 @@ pub fn main() {
         let projection = state.projection();
         let view = state.view.clone();
 
-        let time = Time { ms_ticks: (passed * 1000.0) as f32 };
-
         encoder.clear(&main_color, CLEAR_COLOR);
         encoder.clear_depth(&main_depth, 1.0);
 
-        let transform = Transform {
+        let transform = UserViewTransform {
             view: view.into(),
             proj: projection.into(),
         };
 
-        orbit_body_brush.draw(&mut factory, &mut encoder, &time, &transform,
-            &state.drawables.orbit_bodies);
         background_brush.draw(&mut factory, &mut encoder, &transform);
+        orbit_body_brush.draw(&mut factory, &mut encoder, &transform,
+            &state.drawables.orbit_bodies);
 
         delta_sum += delta;
         delta_count += 1;

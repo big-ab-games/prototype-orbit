@@ -31,9 +31,25 @@ impl Drawables {
     fn initial() -> Drawables {
         Drawables {
             orbit_bodies: vec!(
-                OrbitBody { center: (0.0, 0.0).into(), radius: 1.0 },
-                OrbitBody { center: (3.0, 3.0).into(), radius: 2.0 },
-                OrbitBody { center: (0.0, -4.0).into(), radius: 1.5 }),
+                OrbitBody {
+                    center: (0.0, 0.0).into(),
+                    radius: 1.0,
+                    mass: 3330.0,
+                    velocity: (0.0, 0.0).into(),
+                },
+                OrbitBody {
+                    center: (10.0, 0.0).into(),
+                    radius: 0.3,
+                    mass: 1.0,
+                    velocity: (0.0, 1.5).into(),
+                },
+                OrbitBody {
+                    center: (-16.0, 0.0).into(),
+                    radius: 0.6,
+                    mass: 2.0,
+                    velocity: (0.0, -1.0).into(),
+                },
+            ),
         }
     }
 }
@@ -48,7 +64,7 @@ impl State {
     pub fn new(screen_width: u32, screen_height: u32) -> State {
         State {
             origin: Vector2::new(0.0f32, 0.0),
-            zoom: 8.0f32,
+            zoom: 16f32,
             screen_width,
             screen_height,
             view: birds_eye_at_z(1.0),

@@ -1,4 +1,4 @@
-use super::{Transform, Time, ColorFormat, DepthFormat, OrbitBody};
+use super::{UserViewTransform, ColorFormat, DepthFormat, OrbitBody};
 use cgmath::Matrix4;
 use gfx::*;
 use gfx::traits::FactoryExt;
@@ -19,10 +19,9 @@ pub struct OrbitBodyTransform {
 gfx_defines! {
     pipeline orbitbodypipe {
         vbuf: VertexBuffer<OrbitBodyVertex> = (),
-        out: RenderTarget<ColorFormat> = "out_color",
+        out: BlendTarget<ColorFormat> = ("out_color", state::ColorMask::all(), preset::blend::ALPHA),
         out_depth: gfx::DepthTarget<DepthFormat> = preset::depth::LESS_EQUAL_WRITE,
-        time: ConstantBuffer<Time> = "time",
-        global_transform: ConstantBuffer<Transform> = "global_transform",
+        global_transform: ConstantBuffer<UserViewTransform> = "global_transform",
         local_transform: ConstantBuffer<OrbitBodyTransform> = "local_transform",
     }
 }
@@ -85,7 +84,6 @@ impl<R: Resources> OrbitBodyBrush<R> {
             vbuf: vertex_buffer,
             out: target.clone(),
             out_depth: depth_target.clone(),
-            time: factory.create_constant_buffer(1),
             global_transform: factory.create_constant_buffer(1),
             local_transform: factory.create_constant_buffer(0),
         };
@@ -96,15 +94,13 @@ impl<R: Resources> OrbitBodyBrush<R> {
     pub fn draw<F, C>(&mut self,
                       factory: &mut F,
                       encoder: &mut Encoder<R, C>,
-                      time: &Time,
-                      transform: &Transform,
+                      transform: &UserViewTransform,
                       bodies: &[OrbitBody]) where F: Factory<R>, C: CommandBuffer<R> {
         // reload shaders if changed
         if let Some(pso) = self.pso_builder.recv_modified(factory) {
             self.pso = pso;
         }
 
-        encoder.update_constant_buffer(&self.data.time, time);
         encoder.update_constant_buffer(&self.data.global_transform, transform);
 
         if self.data.vbuf.len() != bodies.len() * 3 {
@@ -136,5 +132,5 @@ impl<R: Resources> OrbitBodyBrush<R> {
 fn local_transform(body: &OrbitBody) -> [[f32; 4]; 4] {
     let scale = Matrix4::from_nonuniform_scale(body.radius as f32, body.radius as f32, 1.0);
     let translate = Matrix4::from_translation([body.center.x as f32, body.center.y as f32, 0.0].into());
-    (scale * translate).into()
+    (translate * scale).into()
 }

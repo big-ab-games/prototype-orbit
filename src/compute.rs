@@ -5,6 +5,9 @@ use std::time::Duration;
 use input::*;
 use state::*;
 use time;
+use cgmath::*;
+
+const GRAVITY: f64 = 0.01;
 
 pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
     let (latest_state_getter, render_state) = svsc::channel(initial_state.clone());
@@ -33,7 +36,31 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
                 }
                 user_mouse.handle(&mut state, delta as f32, &event, &mut tasks);
             });
+
+            for idx in 0..state.drawables.orbit_bodies.len() {
+                let mut new_velocity = state.drawables.orbit_bodies[idx].velocity;
+
+                for idx2 in 0..state.drawables.orbit_bodies.len() {
+                    if idx != idx2 {
+                        let ref body = state.drawables.orbit_bodies[idx];
+                        let ref other = state.drawables.orbit_bodies[idx2];
+                        let dist_squared = body.center.distance2(other.center);
+                        let acceleration_scalar = GRAVITY * other.mass / dist_squared;
+                        let accelaration = (other.center - body.center).normalize_to(acceleration_scalar);
+
+                        new_velocity += delta * accelaration;
+                    }
+                }
+
+                state.drawables.orbit_bodies[idx].velocity = new_velocity;
+            }
+
             tasks.update(&mut state);
+
+            for body in &mut state.drawables.orbit_bodies {
+                body.update(delta);
+            }
+
             // winit-next
             // events_loop.poll_events(|window_device_event| {
             //     if let Event::WindowEvent{ event, .. } = window_device_event {
