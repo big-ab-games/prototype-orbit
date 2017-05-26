@@ -3,7 +3,7 @@ use cgmath::Matrix4;
 use gfx::*;
 use gfx::traits::FactoryExt;
 use gfx;
-use psobuilder::{PsoBuilder, PsoWatcher};
+use psocell::*;
 
 #[derive(VertexData, Debug, Clone, Copy)]
 pub struct OrbitBodyVertex {
@@ -25,6 +25,11 @@ gfx_defines! {
         local_transform: ConstantBuffer<OrbitBodyTransform> = "local_transform",
     }
 }
+
+#[cfg(debug_assertions)]
+type OrbitBodyPsoCell<R, F> = WatcherPsoCell<R, F, orbitbodypipe::Init<'static>>;
+#[cfg(not(debug_assertions))]
+type OrbitBodyPsoCell<R, F> = SimplePsoCell<R, F, orbitbodypipe::Init<'static>>;
 
 // equilateral triangle with incircle radius 1, and incircle center (0, 0)
 // ref: https://rechneronline.de/pi/equilateral-triangle.php
@@ -56,29 +61,18 @@ const ORBIT_BODY_VERTICES: [OrbitBodyVertex; 3] = [
     OrbitBodyVertex{ position: [-BX as f32, -1.0], local_idx: 0 },
     OrbitBodyVertex{ position: [BX as f32, -1.0], local_idx: 0 }];
 
-pub struct OrbitBodyBrush<R: Resources> {
-    pso: PipelineState<R, orbitbodypipe::Meta>,
+pub struct OrbitBodyBrush<R: Resources, F: Factory<R>> {
+    pso: OrbitBodyPsoCell<R, F>,
     slice: Slice<R>,
     data: orbitbodypipe::Data<R>,
-
-    pso_builder: PsoWatcher<orbitbodypipe::Init<'static>>,
 }
 
-impl<R: Resources> OrbitBodyBrush<R> {
-    pub fn new<F>(factory: &mut F,
-                  target: &handle::RenderTargetView<R, ColorFormat>,
-                  depth_target: &handle::DepthStencilView<R, DepthFormat>)
-                  -> OrbitBodyBrush<R>
-        where F: Factory<R>
+impl<R: Resources, F: Factory<R>> OrbitBodyBrush<R, F> {
+    pub fn new(mut factory: F,
+               target: &handle::RenderTargetView<R, ColorFormat>,
+               depth_target: &handle::DepthStencilView<R, DepthFormat>)
+               -> OrbitBodyBrush<R, F>
     {
-        let pso_builder = PsoBuilder::new()
-            .vertex_shader("src/orbitbody/shader/vert.glsl")
-            .fragment_shader("src/orbitbody/shader/frag.glsl")
-            .init_struct(orbitbodypipe::new())
-            .watch("src/orbitbody/shader");
-
-        let pso = pso_builder.build_with(factory).expect("OrbitBodyBrush initial pso");
-
         let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&[], ());
         let data = orbitbodypipe::Data {
             vbuf: vertex_buffer,
@@ -88,23 +82,31 @@ impl<R: Resources> OrbitBodyBrush<R> {
             local_transform: factory.create_constant_buffer(0),
         };
 
-        OrbitBodyBrush { pso, slice, data, pso_builder }
+        #[cfg(debug_assertions)]
+        let pso = WatcherPsoCellBuilder::using(orbitbodypipe::new())
+            .vertex_shader("src/orbitbody/shader/vert.glsl")
+            .fragment_shader("src/orbitbody/shader/frag.glsl")
+            .build(factory)
+            .expect("OrbitBodyBrush pso");
+
+        #[cfg(not(debug_assertions))]
+        let pso = SimplePsoCellBuilder::using(orbitbodypipe::new())
+            .vertex_shader(include_bytes!("shader/vert.glsl"))
+            .fragment_shader(include_bytes!("shader/frag.glsl"))
+            .build(factory)
+            .expect("OrbitBodyBrush pso");
+
+        OrbitBodyBrush { pso, slice, data }
     }
 
-    pub fn draw<F, C>(&mut self,
-                      factory: &mut F,
+    pub fn draw<C>(&mut self,
                       encoder: &mut Encoder<R, C>,
                       transform: &UserViewTransform,
-                      bodies: &[OrbitBody]) where F: Factory<R>, C: CommandBuffer<R> {
-        // reload shaders if changed
-        if let Some(pso) = self.pso_builder.recv_modified(factory) {
-            self.pso = pso;
-        }
-
+                      bodies: &[OrbitBody]) where C: CommandBuffer<R> {
         encoder.update_constant_buffer(&self.data.global_transform, transform);
 
         if self.data.vbuf.len() != bodies.len() * 3 {
-            self.data.local_transform = factory.create_constant_buffer(bodies.len());
+            self.data.local_transform = self.pso.factory().create_constant_buffer(bodies.len());
 
             let mut all_verts = Vec::with_capacity(bodies.len() * 3);
             for body_idx in 0..bodies.len() {
@@ -115,7 +117,7 @@ impl<R: Resources> OrbitBodyBrush<R> {
                     all_verts.push(vert);
                 }
             }
-            let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(all_verts.as_slice(), ());
+            let (vertex_buffer, slice) = self.pso.factory().create_vertex_buffer_with_slice(all_verts.as_slice(), ());
             self.data.vbuf = vertex_buffer;
             self.slice = slice;
         }

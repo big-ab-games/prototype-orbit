@@ -8,8 +8,9 @@ uniform global_transform {
 struct OrbitBodyTransform {
     mat4 transform;
 };
+
 uniform local_transform {
-    OrbitBodyTransform locals[1024];
+    OrbitBodyTransform locals[1024]; // TODO hardcode max instances, can do better?
 };
 
 in vec2 position;

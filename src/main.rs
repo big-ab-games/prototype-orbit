@@ -18,7 +18,7 @@ mod svsc;
 mod background;
 mod orbitbody;
 mod ease;
-mod psobuilder;
+mod psocell;
 mod compute;
 mod debug;
 
@@ -91,8 +91,8 @@ pub fn main() {
 
     // Render logic in main thread
     let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
-    let mut orbit_body_brush = orbitbody::render::OrbitBodyBrush::new(&mut factory, &main_color, &main_depth);
-    let mut background_brush = background::render::BackgroundBrush::new(&mut factory, &main_color, &main_depth);
+    let mut orbit_body_brush = orbitbody::render::OrbitBodyBrush::new(factory.clone(), &main_color, &main_depth);
+    let mut background_brush = background::render::BackgroundBrush::new(factory.clone(), &main_color, &main_depth);
     let mut debug_info_brush = debug::render::DebugInfoBrush::new(&factory);
 
     let (mut delta_sum, mut delta_count) = (0.0, 0);
@@ -121,9 +121,8 @@ pub fn main() {
             proj: projection.into(),
         };
 
-        background_brush.draw(&mut factory, &mut encoder, &transform);
-        orbit_body_brush.draw(&mut factory, &mut encoder, &transform,
-            &state.drawables.orbit_bodies);
+        background_brush.draw(&mut encoder, &transform);
+        orbit_body_brush.draw(&mut encoder, &transform, &state.drawables.orbit_bodies);
 
         delta_sum += delta;
         delta_count += 1;
