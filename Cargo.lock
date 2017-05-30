@@ -6,6 +6,7 @@ dependencies = [
  "easer 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx_macros 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gfx_shader_watch 0.1.0",
  "gfx_text 0.17.0 (git+https://github.com/alexheretic/gfx_text?branch=forward-compat)",
  "gfx_window_glutin 0.16.0",
  "glutin 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -378,6 +379,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "quote 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "syn 0.11.11 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "gfx_shader_watch"
+version = "0.1.0"
+dependencies = [
+ "gfx 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "notify 4.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

@@ -1,6 +1,7 @@
 #[macro_use] extern crate log;
 #[macro_use] extern crate gfx;
 #[macro_use] extern crate gfx_macros;
+#[macro_use] extern crate gfx_shader_watch;
 extern crate pretty_env_logger;
 extern crate gfx_window_glutin;
 extern crate glutin;
@@ -12,7 +13,6 @@ extern crate notify;
 extern crate easer;
 extern crate num_traits;
 
-#[macro_use] mod psocell;
 mod input;
 mod state;
 mod svsc;

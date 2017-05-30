@@ -2,7 +2,7 @@ use super::{UserViewTransform, ColorFormat, DepthFormat};
 use gfx::*;
 use gfx::traits::FactoryExt;
 use gfx;
-use psocell::*;
+use gfx_shader_watch::*;
 
 #[derive(VertexData, Debug, Clone, Copy)]
 pub struct BackgroundVertex {
