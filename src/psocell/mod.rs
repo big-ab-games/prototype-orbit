@@ -1,13 +1,13 @@
 mod watcher;
+#[macro_use] pub mod macros;
 
 pub use psocell::watcher::{WatcherPsoCell, WatcherPsoCellBuilder};
 
 use gfx::traits::FactoryExt;
 use gfx::*;
 use std::error::Error;
-use std::ops::Deref;
 
-pub trait PsoCell<R: Resources, F: Factory<R>, I: pso::PipelineInit>: Deref {
+pub trait PsoCell<R: Resources, F: Factory<R>, I: pso::PipelineInit> {
     fn pso(&mut self) -> &mut PipelineState<R, I::Meta>;
     fn factory(&mut self) -> &mut F;
 }
@@ -16,14 +16,6 @@ pub trait PsoCell<R: Resources, F: Factory<R>, I: pso::PipelineInit>: Deref {
 pub struct SimplePsoCell<R: Resources, F: Factory<R>, I: pso::PipelineInit> {
     pso: PipelineState<R, I::Meta>,
     factory: F,
-}
-
-impl<R: Resources, F: Factory<R>, I: pso::PipelineInit> Deref for SimplePsoCell<R, F, I> {
-    type Target = PipelineState<R, I::Meta>;
-
-    fn deref(&self) -> &PipelineState<R, I::Meta> {
-        &self.pso
-    }
 }
 
 impl<R: Resources, F: Factory<R>, I: pso::PipelineInit> PsoCell<R, F, I> for SimplePsoCell<R, F, I> {

@@ -18,11 +18,6 @@ gfx_defines! {
     }
 }
 
-#[cfg(debug_assertions)]
-type BackgroundPsoCell<R, F> = WatcherPsoCell<R, F, backgroundpipe::Init<'static>>;
-#[cfg(not(debug_assertions))]
-type BackgroundPsoCell<R, F> = SimplePsoCell<R, F, backgroundpipe::Init<'static>>;
-
 const BACKGROUND_QUAD: [BackgroundVertex; 4] = [
     BackgroundVertex{ position: [-10000.0, 10000.0] },
     BackgroundVertex{ position: [10000.0, 10000.0] },
@@ -30,7 +25,7 @@ const BACKGROUND_QUAD: [BackgroundVertex; 4] = [
     BackgroundVertex{ position: [-10000.0, -10000.0] }];
 
 pub struct BackgroundBrush<R: Resources, F: Factory<R>> {
-    pso: BackgroundPsoCell<R, F>,
+    pso_cell: debug_watcher_pso_cell_type!(R, F, pipe = backgroundpipe),
     slice: Slice<R>,
     data: backgroundpipe::Data<R>,
 }
@@ -50,27 +45,19 @@ impl<R: Resources, F: Factory<R>> BackgroundBrush<R, F> {
             global_transform: factory.create_constant_buffer(1),
         };
 
-        #[cfg(debug_assertions)]
-        let pso = WatcherPsoCellBuilder::using(backgroundpipe::new())
-            .vertex_shader("src/background/shader/vert.glsl")
-            .fragment_shader("src/background/shader/frag.glsl")
-            .build(factory)
-            .expect("BackgroundBrush pso");
+        let pso_cell = debug_watcher_pso_cell!(
+            pipe = backgroundpipe,
+            vertex_shader = "shader/vert.glsl",
+            fragment_shader = "shader/frag.glsl",
+            factory = factory).expect("BackgroundBrush pso");
 
-        #[cfg(not(debug_assertions))]
-        let pso = SimplePsoCellBuilder::using(backgroundpipe::new())
-            .vertex_shader(include_bytes!("shader/vert.glsl"))
-            .fragment_shader(include_bytes!("shader/frag.glsl"))
-            .build(factory)
-            .expect("BackgroundBrush pso");
-
-        BackgroundBrush { pso, slice, data }
+        BackgroundBrush { pso_cell, slice, data }
     }
 
     pub fn draw<C>(&mut self,
                       encoder: &mut Encoder<R, C>,
                       transform: &UserViewTransform) where C: CommandBuffer<R> {
         encoder.update_constant_buffer(&self.data.global_transform, transform);
-        encoder.draw(&self.slice, &self.pso, &self.data);
+        encoder.draw(&self.slice, self.pso_cell.pso(), &self.data);
     }
 }

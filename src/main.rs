@@ -12,13 +12,13 @@ extern crate notify;
 extern crate easer;
 extern crate num_traits;
 
+#[macro_use] mod psocell;
 mod input;
 mod state;
 mod svsc;
 mod background;
 mod orbitbody;
 mod ease;
-mod psocell;
 mod compute;
 mod debug;
 

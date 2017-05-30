@@ -9,7 +9,6 @@ use std::sync::mpsc;
 use std::time::Duration;
 use notify;
 use notify::Watcher;
-use std::ops::Deref;
 
 fn shader_bytes(path: &PathBuf) -> Result<Vec<u8>, Box<Error>> {
     let mut shader = Vec::new();
@@ -28,14 +27,6 @@ pub struct WatcherPsoCell<R: Resources, F: Factory<R>, I: pso::PipelineInit> {
 
     factory: F,
     pso: PipelineState<R, I::Meta>,
-}
-
-impl<R: Resources, F: Factory<R>, I: pso::PipelineInit> Deref for WatcherPsoCell<R, F, I> {
-    type Target = PipelineState<R, I::Meta>;
-
-    fn deref(&self) -> &PipelineState<R, I::Meta> {
-        &self.pso
-    }
 }
 
 impl<R: Resources, F: Factory<R>, I: pso::PipelineInit + Clone> WatcherPsoCell<R, F, I> {
@@ -124,10 +115,9 @@ impl<I: pso::PipelineInit + Clone> WatcherPsoCellBuilder<I> {
             let vs = self.vertex_shader.as_ref().ok_or("missing vertex shader")?;
             let fs = self.fragment_shader.as_ref().ok_or("missing fragment shader")?;
 
-            watcher.watch(vs.canonicalize()?.parent().ok_or("invalid vertex shader path")?,
-                          notify::RecursiveMode::NonRecursive)?;
-            watcher.watch(fs.canonicalize()?.parent().ok_or("invalid fragment shader path")?,
-                          notify::RecursiveMode::NonRecursive)?;
+            debug!("Watching {:?}", &[vs, fs]);
+            watcher.watch(vs, notify::RecursiveMode::NonRecursive)?;
+            watcher.watch(fs, notify::RecursiveMode::NonRecursive)?;
 
             let fragment_shader = shader_bytes(fs)?;
             let vertex_shader = shader_bytes(vs)?;
