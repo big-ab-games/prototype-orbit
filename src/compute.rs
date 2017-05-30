@@ -18,6 +18,7 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
     thread::spawn(move|| {
         let mut tasks = Tasks::new();
         let mut user_mouse = UserMouse::new();
+        let mut user_keys = UserKeys::new();
 
         let (mut delta_sum, mut delta_count) = (0.0, 0);
         let mut state = initial_state;
@@ -36,6 +37,7 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
                     _ => {}
                 }
                 user_mouse.handle(&mut state, delta as f32, &event, &mut tasks);
+                user_keys.handle(&mut state, delta as f32, &event, &mut tasks);
             });
 
             for idx in 0..state.drawables.orbit_bodies.len() {
@@ -61,20 +63,6 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
             for body in &mut state.drawables.orbit_bodies {
                 body.update(delta);
             }
-
-            // winit-next
-            // events_loop.poll_events(|window_device_event| {
-            //     if let Event::WindowEvent{ event, .. } = window_device_event {
-            //         match event {
-            //             WindowEvent::KeyboardInput {
-            //                 input: KeyboardInput { virtual_keycode: Some(VirtualKeyCode::Escape), .. },
-            //                 .. } |
-            //             WindowEvent::Closed => user_lock.wants_out = true,
-            //             _ => {}
-            //         }
-            //         user_mouse.handle(&mut *user_lock, delta as f32, &event);
-            //     }
-            // });
 
             delta_sum += delta;
             delta_count += 1;

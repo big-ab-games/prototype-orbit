@@ -5,8 +5,8 @@ use cgmath::*;
 use time;
 use easer::functions::*;
 
-/// max zoom is mathematically the 'minimum' zoom value
-const MAX_ZOOM: f32 = 0.5;
+const MIN_ZOOM: f32 = 0.5;
+const MAX_ZOOM: f32 = 70.0;
 
 #[derive(Clone, Debug)]
 pub struct Zoomer {
@@ -14,7 +14,7 @@ pub struct Zoomer {
 }
 
 impl Zoomer {
-    pub fn zoom_to(zoom: f32, sceen_location: (i32, i32), current: &State) -> Zoomer {
+    pub fn zoom_to_screen(zoom: f32, sceen_location: (i32, i32), current: &State) -> Zoomer {
         let mut after_state = current.clone();
         after_state.zoom = zoom;
         let zoom_to = current.screen_to_world(sceen_location);
@@ -28,6 +28,17 @@ impl Zoomer {
                     .add_transition(current.zoom, zoom)
                     .add_transition(current.origin.x, new_origin.x)
                     .add_transition(current.origin.y, new_origin.y)
+        }
+    }
+
+    pub fn zoom_to_world(zoom: f32, world_location: (f32, f32), current: &State) -> Zoomer {
+        Zoomer {
+            easer: Easer::using(Expo::ease_out)
+                    .start(time::precise_time_s() as f32)
+                    .duration(1.0)
+                    .add_transition(current.zoom, zoom)
+                    .add_transition(current.origin.x, world_location.0)
+                    .add_transition(current.origin.y, world_location.1)
         }
     }
 
@@ -66,9 +77,6 @@ impl Tasks {
 pub struct UserMouse {
     left_down: Option<(i32, i32)>,
     last_position: (i32, i32),
-    // winit-next
-    // left_down: Option<(f64, f64)>,
-    // last_position: (f64, f64),
 }
 
 impl UserMouse {
@@ -82,8 +90,6 @@ impl UserMouse {
     pub fn handle(&mut self, state: &mut State, _delta: f32, event: &WindowEvent, tasks: &mut Tasks) {
         match event {
             &WindowEvent::MouseWheel(MouseScrollDelta::LineDelta(_, y), ..) => {
-            // winit-next
-            // &WindowEvent::MouseWheel{ delta: MouseScrollDelta::LineDelta(_, y), ..} => {
                 // general double/half zoom for fast view changes
                 let mut current_zoom = state.zoom;
                 if let Some(ref zoomer) = tasks.zoom {
@@ -92,30 +98,27 @@ impl UserMouse {
 
                 let factor = if y < 0. { current_zoom } else { current_zoom / 2. };
                 let mut new_zoom = current_zoom - factor * y as f32;
-                if new_zoom < MAX_ZOOM { // enforce max zoom
+                if new_zoom < MIN_ZOOM {
+                    new_zoom = MIN_ZOOM;
+                }
+                else if new_zoom > MAX_ZOOM {
                     new_zoom = MAX_ZOOM;
                 }
-                tasks.zoom = Some(Zoomer::zoom_to(new_zoom, self.last_position, &state));
+                tasks.zoom = Some(Zoomer::zoom_to_screen(new_zoom, self.last_position, &state));
                 debug!("wheel:zooming {:.2} -> {:.2} toward ({:.3},{:.3})",
                     state.zoom, new_zoom, self.last_position.0, self.last_position.1);
             }
-            // winit-next
-            // &WindowEvent::MouseInput{ state: ElementState::Pressed, button: MouseButton::Left, ..} =>
             &WindowEvent::MouseInput(ElementState::Pressed, MouseButton::Left) => {
                 self.left_down = Some(self.last_position);
                 tasks.zoom = None; // cancel any current zooming
             },
             &WindowEvent::MouseInput(ElementState::Released, MouseButton::Left) => {
-            // winit-next
-            // &WindowEvent::MouseInput{ state: ElementState::Released, button: MouseButton::Left, ..} => {
                 if self.left_down.is_some() {
                     debug!("left-drag {:?} -> {:?}", self.left_down.unwrap(), self.last_position);
                     self.left_down = None;
                 }
             },
             &WindowEvent::MouseMoved(x, y) => {
-            // winit-next
-            // &WindowEvent::MouseMoved{ position: (x, y), ..} => {
                 if self.left_down.is_some() {
                     let movement =
                         state.screen_to_world(self.last_position) - state.screen_to_world((x, y));
@@ -123,17 +126,24 @@ impl UserMouse {
                 }
                 self.last_position = (x, y);
             },
-            &WindowEvent::KeyboardInput(ElementState::Pressed, _, Some(VirtualKeyCode::Q), _) => {
-                use state::RenderQuality::*;
-
-                state.quality = match state.quality {
-                    Normal => Sample2x2,
-                    Sample2x2 => Sample3x3,
-                    Sample3x3 => Normal
-                };
-                info!("Setting quality to {:?}", state.quality);
-            },
             _ => (),
+        }
+    }
+}
+
+pub struct UserKeys {}
+
+impl UserKeys {
+    pub fn new() -> UserKeys {
+        UserKeys {}
+    }
+
+    pub fn handle(&mut self, state: &mut State, _delta: f32, event: &WindowEvent, tasks: &mut Tasks) {
+        match event {
+            &WindowEvent::KeyboardInput(_, _, Some(VirtualKeyCode::Home), _) => {
+                tasks.zoom = Some(Zoomer::zoom_to_world(state.zoom, (0f32, 0f32), &state));
+            },
+            _ => ()
         }
     }
 }

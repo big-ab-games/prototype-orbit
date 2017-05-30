@@ -2,13 +2,6 @@ use cgmath::*;
 use OrbitBody;
 use debug::ComputeDebugInfo;
 
-#[derive(Debug, Clone, Copy)]
-pub enum RenderQuality {
-    Normal,
-    Sample2x2,
-    Sample3x3
-}
-
 #[derive(Clone, Debug)]
 pub struct State {
     pub origin: Vector2<f32>,
@@ -17,7 +10,6 @@ pub struct State {
     pub screen_height: u32,
     pub view: Matrix4<f32>,
     pub user_quit: bool,
-    pub quality: RenderQuality,
     pub drawables: Drawables,
     pub debug_info: ComputeDebugInfo,
 }
@@ -69,7 +61,6 @@ impl State {
             screen_height,
             view: birds_eye_at_z(1.0),
             user_quit: false,
-            quality: RenderQuality::Normal,
             drawables: Drawables::initial(),
             debug_info: ComputeDebugInfo::initial(),
         }
