@@ -12,6 +12,7 @@ extern crate gfx_text;
 extern crate notify;
 extern crate easer;
 extern crate num_traits;
+extern crate uuid;
 
 mod input;
 mod state;

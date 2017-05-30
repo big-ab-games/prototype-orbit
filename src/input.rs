@@ -4,9 +4,13 @@ use ease::*;
 use cgmath::*;
 use time;
 use easer::functions::*;
+use uuid::Uuid;
+use std::time::{Instant, Duration};
 
 const MIN_ZOOM: f32 = 0.5;
 const MAX_ZOOM: f32 = 70.0;
+
+const DBL_CLICK_MS: u64 = 500;
 
 #[derive(Clone, Debug)]
 pub struct Zoomer {
@@ -42,34 +46,73 @@ impl Zoomer {
         }
     }
 
-    /// :return still zooming (ie unfinsihed)
-    pub fn update(&self, state: &mut State) -> bool {
-        let now = time::precise_time_s() as f32;
-        let vals = self.easer.values_at(now);
-        state.zoom = vals[0];
-        state.origin = Vector2::new(vals[1], vals[2]);
-        !self.easer.has_finished(now)
+    pub fn just_zoom(zoom: f32, current: &State) -> Zoomer {
+        Zoomer {
+            easer: Easer::using(Expo::ease_out)
+                    .start(time::precise_time_s() as f32)
+                    .duration(1.0)
+                    .add_transition(current.zoom, zoom)
+                    .add_transition(current.origin.x, current.origin.x)
+                    .add_transition(current.origin.y, current.origin.y)
+        }
     }
 
     pub fn zoom_destination(&self) -> f32 {
         self.easer.transitions[0].1
     }
+
+    pub fn zoom_at(&self, time: f32) -> f32 {
+        let vals = self.easer.values_at(time);
+        vals[0]
+    }
+
+    pub fn origin_at(&self, time: f32) -> Vector2<f32> {
+        let vals = self.easer.values_at(time);
+        Vector2::new(vals[1], vals[2])
+    }
+
+    pub fn finished_at(&self, time: f32) -> bool {
+        self.easer.has_finished(time)
+    }
+
+    pub fn update_origin_destination<V: Into<(f32, f32)>>(&mut self, new: V) {
+        let (newx, newy) = new.into();
+        self.easer.transitions[1].1 = newx;
+        self.easer.transitions[2].1 = newy;
+    }
 }
 
 pub struct Tasks {
     pub zoom: Option<Zoomer>,
+    pub follow: Option<Uuid>,
 }
 
 impl Tasks {
     pub fn new() -> Tasks {
-        Tasks { zoom: None }
+        Tasks { zoom: None, follow: None }
     }
 
     pub fn update(&mut self, mut state: &mut State) {
-        if let Some(zoomer) = self.zoom.take() {
-            if zoomer.update(&mut state) {
+        let mut following = None;
+        if let Some(id) = self.follow.take() {
+            following = state.drawables.orbit_bodies.iter().find(|b| b.id == id);
+        }
+
+        if let Some(mut zoomer) = self.zoom.take() {
+            if let Some(body) = following {
+                zoomer.update_origin_destination(body.center.cast());
+                self.follow = Some(body.id);
+            }
+            let now = time::precise_time_s() as f32;
+            state.zoom = zoomer.zoom_at(now);
+            state.origin = zoomer.origin_at(now);
+            if !zoomer.finished_at(now) {
                 self.zoom = Some(zoomer);
             }
+        }
+        else if let Some(body) = following {
+            state.origin = (body.center.x as f32, body.center.y as f32).into();
+            self.follow = Some(body.id);
         }
     }
 }
@@ -77,13 +120,16 @@ impl Tasks {
 pub struct UserMouse {
     left_down: Option<(i32, i32)>,
     last_position: (i32, i32),
+    last_left_click: Instant,
 }
 
 impl UserMouse {
     pub fn new() -> UserMouse {
         UserMouse {
             left_down: None,
-            last_position: (0, 0)
+            last_position: (0, 0),
+            // init in past sometime, to avoid optional complexity
+            last_left_click: Instant::now() - Duration::from_secs(999)
         }
     }
 
@@ -110,7 +156,13 @@ impl UserMouse {
             }
             &WindowEvent::MouseInput(ElementState::Pressed, MouseButton::Left) => {
                 self.left_down = Some(self.last_position);
-                tasks.zoom = None; // cancel any current zooming
+                // cancel any current tasks
+                tasks.zoom = None;
+                tasks.follow = None;
+                if self.last_left_click.elapsed() < Duration::from_millis(DBL_CLICK_MS) {
+                    self.handle_double_click(state, tasks);
+                }
+                self.last_left_click = Instant::now();
             },
             &WindowEvent::MouseInput(ElementState::Released, MouseButton::Left) => {
                 if self.left_down.is_some() {
@@ -129,6 +181,19 @@ impl UserMouse {
             _ => (),
         }
     }
+
+    fn handle_double_click(&mut self, state: &mut State, tasks: &mut Tasks) {
+        let click_pos = state.screen_to_world(self.last_position);
+        debug!("dbl click at {:?} => world {:?}", self.last_position, click_pos);
+        let body = state.drawables.orbit_bodies.iter().find(|body| {
+            click_pos.distance(body.center.cast()) < body.radius as f32
+        });
+        if let Some(body) = body {
+            info!("Following body {}", body.id);
+            tasks.zoom = Some(Zoomer::just_zoom(state.zoom, state));
+            tasks.follow = Some(body.id);
+        }
+    }
 }
 
 pub struct UserKeys {}
@@ -141,6 +206,7 @@ impl UserKeys {
     pub fn handle(&mut self, state: &mut State, _delta: f32, event: &WindowEvent, tasks: &mut Tasks) {
         match event {
             &WindowEvent::KeyboardInput(_, _, Some(VirtualKeyCode::Home), _) => {
+                tasks.follow = None;
                 tasks.zoom = Some(Zoomer::zoom_to_world(state.zoom, (0f32, 0f32), &state));
             },
             _ => ()

@@ -1,6 +1,7 @@
 use cgmath::*;
 use OrbitBody;
 use debug::ComputeDebugInfo;
+use uuid::Uuid;
 
 #[derive(Clone, Debug)]
 pub struct State {
@@ -12,6 +13,7 @@ pub struct State {
     pub user_quit: bool,
     pub drawables: Drawables,
     pub debug_info: ComputeDebugInfo,
+    // pub following: Option<Uuid>,
 }
 
 #[derive(Clone, Debug)]
@@ -24,18 +26,21 @@ impl Drawables {
         Drawables {
             orbit_bodies: vec!(
                 OrbitBody {
+                    id: Uuid::new_v4(),
                     center: (0.0, 0.0).into(),
                     radius: 1.0,
                     mass: 3330.0,
                     velocity: (0.0, 0.0).into(),
                 },
                 OrbitBody {
+                    id: Uuid::new_v4(),
                     center: (10.0, 0.0).into(),
                     radius: 0.3,
                     mass: 1.0,
                     velocity: (0.0, 1.5).into(),
                 },
                 OrbitBody {
+                    id: Uuid::new_v4(),
                     center: (-16.0, 0.0).into(),
                     radius: 0.6,
                     mass: 2.0,
@@ -80,11 +85,15 @@ impl State {
     }
 
     /// translates screen pixels into world co-ordinates in the orthographic projection
-    pub fn screen_to_world<V: Into<Vector2<i32>>>(&self, pixels: V) -> Vector2<f32> {
+    pub fn screen_to_world_normalised<V: Into<Vector2<i32>>>(&self, pixels: V) -> Vector2<f32> {
         let pixels = pixels.into();
         let x_world = self.zoom * self.aspect_ratio() * (pixels.x as f32 * 2.0 / self.screen_width as f32 - 1f32);
         let y_world = self.zoom * (-pixels.y as f32 * 2.0 / self.screen_height as f32 + 1f32);
         Vector2::new(x_world, y_world)
+    }
+
+    pub fn screen_to_world<V: Into<Vector2<i32>>>(&self, pixels: V) -> Vector2<f32> {
+        self.origin + self.screen_to_world_normalised(pixels)
     }
 }
 
