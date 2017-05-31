@@ -22,6 +22,7 @@ mod orbitbody;
 mod ease;
 mod compute;
 mod debug;
+mod orbitcurve;
 
 use gfx::{Device};
 use glutin::*;
@@ -92,9 +93,15 @@ pub fn main() {
 
     // Render logic in main thread
     let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
-    let mut orbit_body_brush = orbitbody::render::OrbitBodyBrush::new(factory.clone(), &main_color, &main_depth);
-    let mut background_brush = background::render::BackgroundBrush::new(factory.clone(), &main_color, &main_depth);
+    let mut orbit_body_brush = orbitbody::render::OrbitBodyBrush::new(
+        factory.clone(), &main_color, &main_depth);
+    let mut background_brush = background::render::BackgroundBrush::new(
+        factory.clone(), &main_color, &main_depth);
     let mut debug_info_brush = debug::render::DebugInfoBrush::new(&factory);
+    let mut orbit_curve_brush = orbitcurve::render::OrbitCurveBrush::new(
+        factory.clone(), &main_color, &main_depth);
+    let mut orbit_curve_brush2 = orbitcurve::render::OrbitCurveBrush::new(
+        factory.clone(), &main_color, &main_depth);
 
     let (mut delta_sum, mut delta_count) = (0.0, 0);
     let mut passed = time::precise_time_s() - start;
@@ -123,7 +130,15 @@ pub fn main() {
         };
 
         background_brush.draw(&mut encoder, &transform);
+        for curve in state.drawables.orbit_curves.iter().nth(0) {
+            orbit_curve_brush.draw(&mut encoder, &transform, &curve);
+        }
+        for curve in state.drawables.orbit_curves.iter().nth(1) {
+            orbit_curve_brush2.draw(&mut encoder, &transform, &curve);
+        }
+
         orbit_body_brush.draw(&mut encoder, &transform, &state.drawables.orbit_bodies);
+
 
         delta_sum += delta;
         delta_count += 1;

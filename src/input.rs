@@ -82,6 +82,7 @@ impl Zoomer {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Tasks {
     pub zoom: Option<Zoomer>,
     pub follow: Option<Uuid>,
@@ -117,6 +118,7 @@ impl Tasks {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct UserMouse {
     left_down: Option<(i32, i32)>,
     last_position: (i32, i32),
@@ -196,6 +198,7 @@ impl UserMouse {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct UserKeys {}
 
 impl UserKeys {

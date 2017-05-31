@@ -6,6 +6,7 @@ use input::*;
 use state::*;
 use time;
 use cgmath::*;
+use orbitcurve::OrbitCurve;
 
 const DESIRED_CPS: u32 = 1_080;
 const DESIRED_DELTA: f64 = 1.0 / DESIRED_CPS as f64;
@@ -40,29 +41,8 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
                 user_keys.handle(&mut state, delta as f32, &event, &mut tasks);
             });
 
-            for idx in 0..state.drawables.orbit_bodies.len() {
-                let mut new_velocity = state.drawables.orbit_bodies[idx].velocity;
-
-                for idx2 in 0..state.drawables.orbit_bodies.len() {
-                    if idx != idx2 {
-                        let ref body = state.drawables.orbit_bodies[idx];
-                        let ref other = state.drawables.orbit_bodies[idx2];
-                        let dist_squared = body.center.distance2(other.center);
-                        let acceleration_scalar = GRAVITY * other.mass / dist_squared;
-                        let accelaration = (other.center - body.center).normalize_to(acceleration_scalar);
-
-                        new_velocity += delta * accelaration;
-                    }
-                }
-
-                state.drawables.orbit_bodies[idx].velocity = new_velocity;
-            }
-
-            tasks.update(&mut state);
-
-            for body in &mut state.drawables.orbit_bodies {
-                body.update(delta);
-            }
+            compute_state(&mut state, &mut tasks, delta);
+            compute_projections(&mut state, &tasks);
 
             delta_sum += delta;
             delta_count += 1;
@@ -86,4 +66,55 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
     });
 
     latest_state_getter
+}
+
+fn compute_state(mut state: &mut State, tasks: &mut Tasks, delta: f64) {
+    for idx in 0..state.drawables.orbit_bodies.len() {
+        let mut new_velocity = state.drawables.orbit_bodies[idx].velocity;
+
+        for idx2 in 0..state.drawables.orbit_bodies.len() {
+            if idx != idx2 {
+                let ref body = state.drawables.orbit_bodies[idx];
+                let ref other = state.drawables.orbit_bodies[idx2];
+                let dist_squared = body.center.distance2(other.center);
+                let acceleration_scalar = GRAVITY * other.mass / dist_squared;
+                let accelaration = (other.center - body.center).normalize_to(acceleration_scalar);
+
+                new_velocity += delta * accelaration;
+            }
+        }
+
+        state.drawables.orbit_bodies[idx].velocity = new_velocity;
+    }
+
+    tasks.update(&mut state);
+
+    for body in &mut state.drawables.orbit_bodies {
+        body.update(delta);
+    }
+}
+
+fn compute_projections(state: &mut State, tasks: &Tasks) {
+    // remove current projections, re-initialise nil curves
+    state.drawables.orbit_curves.clear();
+    for body in state.drawables.orbit_bodies.iter() {
+        let mut curve = OrbitCurve::new();
+        curve.add_plot(body.center);
+        state.drawables.orbit_curves.push(curve);
+    }
+
+    let mut f_tasks = tasks.clone();
+    f_tasks.zoom = None;
+    f_tasks.follow = None;
+    let mut f_state = state.clone();
+
+    let f_delta = 0.1;
+    for _ in 0..400 {
+        compute_state(&mut f_state, &mut f_tasks, f_delta);
+        for (idx, curve) in state.drawables.orbit_curves.iter_mut().enumerate() {
+            let ref body = &f_state.drawables.orbit_bodies[idx];
+            curve.add_plot(body.center);
+        }
+    }
+    state.drawables.orbit_curves.retain(|ref c| c.is_drawable());
 }

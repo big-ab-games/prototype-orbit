@@ -1,5 +1,6 @@
 use cgmath::*;
 use OrbitBody;
+use orbitcurve::OrbitCurve;
 use debug::ComputeDebugInfo;
 use uuid::Uuid;
 
@@ -13,12 +14,12 @@ pub struct State {
     pub user_quit: bool,
     pub drawables: Drawables,
     pub debug_info: ComputeDebugInfo,
-    // pub following: Option<Uuid>,
 }
 
 #[derive(Clone, Debug)]
 pub struct Drawables {
     pub orbit_bodies: Vec<OrbitBody>,
+    pub orbit_curves: Vec<OrbitCurve>,
 }
 
 impl Drawables {
@@ -47,6 +48,7 @@ impl Drawables {
                     velocity: (0.0, -1.0).into(),
                 },
             ),
+            orbit_curves: Vec::new(),
         }
     }
 }

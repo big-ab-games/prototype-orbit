@@ -6,7 +6,7 @@ dependencies = [
  "easer 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx_macros 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "gfx_shader_watch 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gfx_shader_watch 0.2.0",
  "gfx_text 0.17.0 (git+https://github.com/alexheretic/gfx_text?branch=forward-compat)",
  "gfx_window_glutin 0.16.0",
  "glutin 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -384,8 +384,7 @@ dependencies = [
 
 [[package]]
 name = "gfx_shader_watch"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+version = "0.2.0"
 dependencies = [
  "gfx 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1188,7 +1187,6 @@ dependencies = [
 "checksum gfx_device_gl 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d96af24822f5cae879203bf72a929883525edc7dce8db17b9eba931b9e41e7a8"
 "checksum gfx_gl 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f25c3866329ab91b92bfbc4d5e1d8172607e804564d90b8fbecb96cbc366845d"
 "checksum gfx_macros 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d38f9e1d3f4705b26e73437e35fd71c955aba5781f6bb5391d37a166204d301f"
-"checksum gfx_shader_watch 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "82d26b52733dbcacaa89652789a4a98c696050da78edb128fa008b9511a09199"
 "checksum gfx_text 0.17.0 (git+https://github.com/alexheretic/gfx_text?branch=forward-compat)" = "<none>"
 "checksum gif 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)" = "8a80d6fe9e52f637df9afd4779449a7be17c39cc9c35b01589bb833f956ba596"
 "checksum gl_generator 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "0940975a4ca12b088d32b5d5134826c47d2e73de4b0b459b05244c01503eccbb"
