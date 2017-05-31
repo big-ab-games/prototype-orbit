@@ -27,9 +27,9 @@ impl OrbitCurveVertex {
 pub struct OrbitCurveBezier {
     p1: [f32; 2],
     p2: [f32; 2],
-    p3: [f32; 2],
     opacity: f32,
-    std140_offset: u32,
+    thickness: f32,
+    std140_offset: [u32; 2],
 }
 
 gfx_defines! {
@@ -77,44 +77,40 @@ impl<R: Resources, F: Factory<R>> OrbitCurveBrush<R, F> {
                    encoder: &mut Encoder<R, C>,
                    transform: &UserViewTransform,
                    curve: &OrbitCurve) where C: CommandBuffer<R> {
+        if curve.opacity < 0.00001 {
+            return;
+        }
+
         encoder.update_constant_buffer(&self.data.global_transform, transform);
-        self.data.beziers = self.pso_cell.factory().create_constant_buffer(curve.plots.len() - 2);
+        self.data.beziers = self.pso_cell.factory().create_constant_buffer(curve.plots.len() - 1);
 
         let cavg = curve.mean_plot().cast();
-        let mut all_verts = Vec::with_capacity((curve.plots.len() - 2) * 5);
+        let mut all_verts = Vec::with_capacity((curve.plots.len() - 2) * 4);
 
-        for plot_idx in 0..(curve.plots.len()-2) {
+        for plot_idx in 0..(curve.plots.len()-1) {
             let c1 = curve.plots[plot_idx].cast();
             let c2 = curve.plots[plot_idx + 1].cast();
-            let c3 = curve.plots[plot_idx + 2].cast();
 
             let c1_to_cavg = (cavg - c1).normalize();
             let c2_to_cavg = (cavg - c2).normalize();
-            let c2_to_c3 = c3 - c2;
 
-            let v1 = OrbitCurveVertex::new(c1 + c1_to_cavg * LINE_WIDTH, plot_idx);
-            let v2 = OrbitCurveVertex::new(c1 - c1_to_cavg * LINE_WIDTH, plot_idx);
+            let v1 = OrbitCurveVertex::new(c1 - c1_to_cavg * LINE_WIDTH / 2.0, plot_idx);
+            let v2 = OrbitCurveVertex::new(c1 + c1_to_cavg * LINE_WIDTH / 2.0, plot_idx);
 
-            // bezier mid/curve point
-            let cmid = c2 - (c2_to_c3 / 2.0);
-            let vmid = cmid - (cavg - cmid).normalize() * LINE_WIDTH;
-            let v3 = OrbitCurveVertex::new(vmid, plot_idx);
+            let v3 = OrbitCurveVertex::new(c2 - c2_to_cavg * LINE_WIDTH / 2.0, plot_idx);
+            let v4 = OrbitCurveVertex::new(c2 + c2_to_cavg * LINE_WIDTH / 2.0, plot_idx);
 
-            let v4 = OrbitCurveVertex::new(c2 + c2_to_cavg * LINE_WIDTH, plot_idx);
-            let v5 = OrbitCurveVertex::new(c2 - c2_to_cavg * LINE_WIDTH, plot_idx);
-
-            all_verts.push(v2);
             all_verts.push(v1);
+            all_verts.push(v2);
             all_verts.push(v3);
             all_verts.push(v4);
-            all_verts.push(v5);
 
             let bezier = OrbitCurveBezier {
                 p1: c1.into(),
-                p2: cmid.into(),
-                p3: c2.into(),
-                opacity: (plot_idx+1) as f32 / (curve.plots.len()-1) as f32,
-                std140_offset: 0,
+                p2: c2.into(),
+                opacity: curve.opacity * (1.0 - (plot_idx+1) as f32 / (curve.plots.len()-1) as f32),
+                thickness: LINE_WIDTH,
+                std140_offset: [0; 2],
             };
             encoder.update_buffer(&self.data.beziers, &[bezier], plot_idx).unwrap();
         }

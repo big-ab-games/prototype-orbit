@@ -6,11 +6,12 @@ use cgmath::*;
 pub struct OrbitCurve {
     plots: Vec<Vector2<f64>>,
     angle: Rad<f64>,
+    pub opacity: f32,
 }
 
 impl OrbitCurve {
     pub fn new() -> OrbitCurve {
-        OrbitCurve { plots: Vec::new(), angle: Rad::zero() }
+        OrbitCurve { plots: Vec::new(), angle: Rad::zero(), opacity: 1.0 }
     }
 
     pub fn add_plot(&mut self, plot: Vector2<f64>) {

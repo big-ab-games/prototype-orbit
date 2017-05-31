@@ -103,13 +103,32 @@ fn compute_projections(state: &mut State, tasks: &Tasks) {
         state.drawables.orbit_curves.push(curve);
     }
 
+    // fade between [10, 20]
+    if state.zoom > 10.0 {
+        let opacity = 1.0 - (state.zoom - 10.0) / 10.0;
+        for curve in state.drawables.orbit_curves.iter_mut() {
+            curve.opacity = opacity;
+        }
+        if opacity <= 0.0 {
+            return
+        }
+    }
+    else {
+        for curve in state.drawables.orbit_curves.iter_mut() {
+            curve.opacity = 1.0;
+        }
+    }
+
+    // separate onto thread, don't require all curve points computed now, just whenever they
+    // can be by the other thread. Once the thread has computed enough, it restarts with the
+    // latest state and starts updating the curve positions
     let mut f_tasks = tasks.clone();
     f_tasks.zoom = None;
     f_tasks.follow = None;
     let mut f_state = state.clone();
 
     let f_delta = 0.05;
-    for _ in 0..1000 {
+    for _ in 0..1300 {
         compute_state(&mut f_state, &mut f_tasks, f_delta);
         for (idx, curve) in state.drawables.orbit_curves.iter_mut().enumerate() {
             let ref body = &f_state.drawables.orbit_bodies[idx];
