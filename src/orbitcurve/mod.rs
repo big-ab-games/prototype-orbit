@@ -13,16 +13,15 @@ impl OrbitCurve {
         OrbitCurve { plots: Vec::new(), angle: Rad::zero() }
     }
 
-    pub fn add_plot(&mut self, plot: Vector2<f64>) -> bool {
-        if self.angle >= Rad::full_turn() {
-            return false;
-        }
-
+    pub fn add_plot(&mut self, plot: Vector2<f64>) {
         if self.plots.len() > 1 {
-            self.angle += self.plots[self.plots.len()-1].angle(plot);
+            let dist = self.latest_plot().distance(plot);
+            if dist < 0.15 {
+                return;
+            }
+            self.angle += self.latest_plot().angle(plot);
         }
         self.plots.push(plot);
-        true
     }
 
     pub fn mean_plot(&self) -> Vector2<f64> {
@@ -31,6 +30,10 @@ impl OrbitCurve {
 
     pub fn is_drawable(&self) -> bool {
         self.plots.len() > 3 && self.mean_plot().distance(self.plots[0]) > 0.1
+    }
+
+    fn latest_plot(&self) -> Vector2<f64> {
+        self.plots[self.plots.len()-1]
     }
 }
 

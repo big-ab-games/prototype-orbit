@@ -108,8 +108,8 @@ fn compute_projections(state: &mut State, tasks: &Tasks) {
     f_tasks.follow = None;
     let mut f_state = state.clone();
 
-    let f_delta = 0.1;
-    for _ in 0..400 {
+    let f_delta = 0.05;
+    for _ in 0..1000 {
         compute_state(&mut f_state, &mut f_tasks, f_delta);
         for (idx, curve) in state.drawables.orbit_curves.iter_mut().enumerate() {
             let ref body = &f_state.drawables.orbit_bodies[idx];

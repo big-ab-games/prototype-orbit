@@ -28,7 +28,8 @@ pub struct OrbitCurveBezier {
     p1: [f32; 2],
     p2: [f32; 2],
     p3: [f32; 2],
-    std140_offset: [u32; 2],
+    opacity: f32,
+    std140_offset: u32,
 }
 
 gfx_defines! {
@@ -112,7 +113,8 @@ impl<R: Resources, F: Factory<R>> OrbitCurveBrush<R, F> {
                 p1: c1.into(),
                 p2: cmid.into(),
                 p3: c2.into(),
-                std140_offset: [0; 2],
+                opacity: (plot_idx+1) as f32 / (curve.plots.len()-1) as f32,
+                std140_offset: 0,
             };
             encoder.update_buffer(&self.data.beziers, &[bezier], plot_idx).unwrap();
         }

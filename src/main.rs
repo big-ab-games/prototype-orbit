@@ -98,10 +98,7 @@ pub fn main() {
     let mut background_brush = background::render::BackgroundBrush::new(
         factory.clone(), &main_color, &main_depth);
     let mut debug_info_brush = debug::render::DebugInfoBrush::new(&factory);
-    let mut orbit_curve_brush = orbitcurve::render::OrbitCurveBrush::new(
-        factory.clone(), &main_color, &main_depth);
-    let mut orbit_curve_brush2 = orbitcurve::render::OrbitCurveBrush::new(
-        factory.clone(), &main_color, &main_depth);
+    let mut orbit_curve_brushes = Vec::new();
 
     let (mut delta_sum, mut delta_count) = (0.0, 0);
     let mut passed = time::precise_time_s() - start;
@@ -130,11 +127,13 @@ pub fn main() {
         };
 
         background_brush.draw(&mut encoder, &transform);
-        for curve in state.drawables.orbit_curves.iter().nth(0) {
-            orbit_curve_brush.draw(&mut encoder, &transform, &curve);
+
+        while state.drawables.orbit_curves.len() > orbit_curve_brushes.len() {
+            orbit_curve_brushes.push(orbitcurve::render::OrbitCurveBrush::new(
+                    factory.clone(), &main_color, &main_depth));
         }
-        for curve in state.drawables.orbit_curves.iter().nth(1) {
-            orbit_curve_brush2.draw(&mut encoder, &transform, &curve);
+        for (idx, curve) in state.drawables.orbit_curves.iter().enumerate() {
+            orbit_curve_brushes[idx].draw(&mut encoder, &transform, &curve);
         }
 
         orbit_body_brush.draw(&mut encoder, &transform, &state.drawables.orbit_bodies);

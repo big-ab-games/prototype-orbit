@@ -6,6 +6,7 @@ struct OrbitCurveBezier {
     vec2 p1;
     vec2 p2;
     vec2 p3;
+    float opacity;
 };
 
 uniform beziers {
@@ -71,9 +72,9 @@ void main() {
     float distance_from_curve = distance_from_curve();
     float max_dist = thickness / 2;
     if (distance_from_curve <= max_dist) {
-        out_color = vec4(1.0, 1.0, 1.0, 1.0);
+        out_color = vec4(1.0, 1.0, 1.0, 1 - u_beziers[bezier_idx].opacity);
         // blend anti-alias
-        out_color.a = mix(1.0, 0.0, distance_from_curve / max_dist);
+        out_color.a *= mix(1.0, 0.0, distance_from_curve / max_dist);
     }
     else discard;
 }
