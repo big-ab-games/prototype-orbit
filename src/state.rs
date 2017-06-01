@@ -3,6 +3,7 @@ use OrbitBody;
 use orbitcurve::OrbitCurve;
 use debug::ComputeDebugInfo;
 use uuid::Uuid;
+use std::f64;
 
 #[derive(Clone, Debug)]
 pub struct State {
@@ -57,6 +58,22 @@ impl Drawables {
             ),
             orbit_curves: Vec::new(),
         }
+    }
+
+    pub fn curve_body_mismatch(&self) -> bool {
+        let mismatch_distance = self.orbit_bodies.iter()
+            .map(|b| b.radius)
+            .fold(1./0., f64::min) * 0.5;
+
+        for (idx, curve) in self.orbit_curves.iter().enumerate() {
+            if curve.plots.len() > 0 {
+                let dist_to_body = curve.plots[0].distance(self.orbit_bodies[idx].center);
+                if dist_to_body > mismatch_distance {
+                    return true;
+                }
+            }
+        }
+        false
     }
 }
 

@@ -22,8 +22,8 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
         let mut user_mouse = UserMouse::new();
         let mut user_keys = UserKeys::new();
 
-        let (computed_deltas, rx) = mpsc::channel();
-        let mut seer = Seer::new(initial_state.clone(), rx);
+        let mut seer = Seer::new(initial_state.clone());
+        let mut seer_apprentice = None;
 
         let (mut delta_sum, mut delta_count) = (0.0, 0);
         let mut state = initial_state;
@@ -48,8 +48,34 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
             compute_state(&mut state, &mut tasks, delta);
 
             handle_seer_projections(&mut state, &mut seer);
+            // if we can tell the seer is losing his touch, ie his curves start erroneously
+            // far from the orbit bodies, we spin up an apprentice in parallel seeded with
+            // newer state. When the apprentice as 99% of the plots of his master we switch
+            // to using the apprentice as the new seer
+            if seer_apprentice.is_none() && state.drawables.curve_body_mismatch() {
+                debug!("Curve mismatch detected, getting an apprentice seer...");
+                seer_apprentice = Some(Seer::new(state.clone()));
+            }
+            else if let Some(mut apprentice) = seer_apprentice.take() {
+                if state.drawables.orbit_curves.len() > 0 {
+                    let apprentice_projection_curves = apprentice.projection.latest().len();
+                    let current_projection_size = state.drawables.orbit_curves[0].plots.len() as f64;
+                    if apprentice_projection_curves > 0 &&
+                        apprentice.projection.latest()[0].plots.len() as f64 >=
+                        current_projection_size * 0.99 {
+                        debug!("Apprentice seer is ready, he's the new seer");
+                        seer = apprentice;
+                    }
+                    else { // still needs training
+                        seer_apprentice = Some(apprentice);
+                    }
+                }
+            }
 
-            computed_deltas.send(delta).unwrap();
+            seer.main_deltas.send(delta).expect("seer->delta");
+            if let Some(ref apprentice) = seer_apprentice {
+                apprentice.main_deltas.send(delta).expect("apprentice seer->delta");
+            }
 
             delta_sum += delta;
             delta_count += 1;
@@ -120,13 +146,17 @@ fn handle_seer_projections(state: &mut State, seer: &mut Seer) {
 
 struct Seer {
     pub projection: svsc::Getter<Vec<OrbitCurve>>,
+    pub main_deltas: mpsc::Sender<f64>,
 }
 
-const SEER_COMPUTE_DELTA: f64 = 0.005;
-const SEER_MAX_PLOTS: usize = 20_000;
+const SEER_COMPUTE_DELTA: f64 = 0.001;
+const SEER_MAX_PLOTS: usize = 50_000;
+
+use uuid::Uuid;
 
 impl Seer {
-    fn new(initial_state: State, main_deltas_receiver: mpsc::Receiver<f64>) -> Seer {
+    fn new(initial_state: State) -> Seer {
+        let (tx, main_deltas_receiver) = mpsc::channel();
         let (projection_get, projection) = svsc::channel(Vec::new());
 
         thread::spawn(move|| {
@@ -145,6 +175,7 @@ impl Seer {
                 state.drawables.orbit_curves.push(curve);
             }
 
+            let me = Uuid::new_v4();
             loop {
                 // consider main loop computed deltas and adjust
                 while let Ok(delta) = main_deltas_receiver.try_recv() {
@@ -165,6 +196,9 @@ impl Seer {
                 }
 
                 if plots >= SEER_MAX_PLOTS {
+                    if projection.dead_getter() {
+                        break; // dead getter, we've been forgotten
+                    }
                     thread::sleep(Duration::from_millis((SEER_COMPUTE_DELTA * 500.0).round() as u64));
                     continue;
                 }
@@ -185,21 +219,27 @@ impl Seer {
                         for curve in curves.iter() {
                             curves_for_render.push(curve.with_minimum_plot_distance(0.25));
                         }
-                        sender.send(curves_for_render).unwrap();
+
+                        if let Err(_) = sender.send(curves_for_render) {
+                            // err => seer is forgotten, not interesting
+                        }
                     });
                     filtering = true;
                 }
 
                 if let Ok(curves) = filtered_updates.try_recv() {
                     if let Err(_) = projection.update(curves) {
-                        // dead getter
-                        break;
+                        break; // dead getter, we've been forgotten
                     }
                     filtering = false;
                 }
             }
+            debug!("Seer {} forgetten", me);
         });
 
-        Seer { projection: projection_get }
+        Seer {
+            projection: projection_get,
+            main_deltas: tx,
+        }
     }
 }

@@ -44,6 +44,10 @@ impl<T> Updater<T> {
             None => Err(DeadGetterError(value))
         }
     }
+
+    pub fn dead_getter(&self) -> bool {
+        self.latest.upgrade().is_none()
+    }
 }
 
 pub fn channel<T: Send>(initial: T) -> (Getter<T>, Updater<T>) {
@@ -145,5 +149,13 @@ mod svsc_tests {
         let (val_get, val) = channel(0);
         mem::drop(val_get);
         assert_eq!(val.update(123), Err(DeadGetterError(123)));
+    }
+
+    #[test]
+    fn is_alive() {
+        let (val_get, val) = channel(0);
+        assert!(!val.dead_getter());
+        mem::drop(val_get);
+        assert!(val.dead_getter());
     }
 }
