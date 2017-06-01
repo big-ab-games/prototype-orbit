@@ -25,10 +25,17 @@ vec2 linear_bezier(float t, vec2 p1, vec2 p2) {
 /// :t float in [0,1]
 float distance_from_curve_at(float t) {
     OrbitCurveBezier bezier = u_beziers[bezier_idx];
-
     vec2 pt = linear_bezier(t, bezier.p1, bezier.p2);
+    float dist = distance(pt, model_pos);
+    if (bezier_idx != uint(0)) {
+        // consider previous section too
+        OrbitCurveBezier last_bezier = u_beziers[bezier_idx - uint(1)];
+        vec2 pt2 = linear_bezier(1 - t, last_bezier.p1, last_bezier.p2);
+        float dist2 = distance(pt2, model_pos);
+        dist = min(dist, dist2);
+    }
 
-    return distance(pt, model_pos);
+    return dist;
 }
 
 float distance_from_curve() {

@@ -103,23 +103,24 @@ impl<R: Resources, F: Factory<R>> OrbitCurveBrush<R, F> {
         self.data.beziers = self.pso_cell.factory().create_constant_buffer(curve.plots.len() - 1);
 
         let cavg = curve.mean_plot().cast();
-        let mut all_verts = Vec::with_capacity((curve.plots.len() - 2) * 4);
+        let mut all_verts = Vec::with_capacity((curve.plots.len() - 1) * 2 + 2);
+
+        let c1 = curve.plots[0].cast();
+        let c1_to_cavg = (cavg - c1).normalize();
+
+        let v1 = OrbitCurveVertex::new(c1 - c1_to_cavg * LINE_WIDTH / 2.0, 0);
+        let v2 = OrbitCurveVertex::new(c1 + c1_to_cavg * LINE_WIDTH / 2.0, 0);
+        all_verts.push(v1);
+        all_verts.push(v2);
 
         for plot_idx in 0..(curve.plots.len()-1) {
             let c1 = curve.plots[plot_idx].cast();
             let c2 = curve.plots[plot_idx + 1].cast();
-
-            let c1_to_cavg = (cavg - c1).normalize();
             let c2_to_cavg = (cavg - c2).normalize();
 
-            let v1 = OrbitCurveVertex::new(c1 - c1_to_cavg * LINE_WIDTH / 2.0, plot_idx);
-            let v2 = OrbitCurveVertex::new(c1 + c1_to_cavg * LINE_WIDTH / 2.0, plot_idx);
+            let v3 = OrbitCurveVertex::new(c2 - c2_to_cavg * LINE_WIDTH / 2.0, plot_idx + 1);
+            let v4 = OrbitCurveVertex::new(c2 + c2_to_cavg * LINE_WIDTH / 2.0, plot_idx + 1);
 
-            let v3 = OrbitCurveVertex::new(c2 - c2_to_cavg * LINE_WIDTH / 2.0, plot_idx);
-            let v4 = OrbitCurveVertex::new(c2 + c2_to_cavg * LINE_WIDTH / 2.0, plot_idx);
-
-            all_verts.push(v1);
-            all_verts.push(v2);
             all_verts.push(v3);
             all_verts.push(v4);
 
