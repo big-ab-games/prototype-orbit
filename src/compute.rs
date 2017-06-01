@@ -7,6 +7,7 @@ use state::*;
 use time;
 use cgmath::*;
 use orbitcurve::OrbitCurve;
+use std::sync::mpsc;
 
 const DESIRED_CPS: u32 = 1_080;
 const DESIRED_DELTA: f64 = 1.0 / DESIRED_CPS as f64;
@@ -20,6 +21,9 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
         let mut tasks = Tasks::new();
         let mut user_mouse = UserMouse::new();
         let mut user_keys = UserKeys::new();
+
+        let (computed_deltas, rx) = mpsc::channel();
+        let mut seer = Seer::new(initial_state.clone(), rx);
 
         let (mut delta_sum, mut delta_count) = (0.0, 0);
         let mut state = initial_state;
@@ -42,7 +46,10 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
             });
 
             compute_state(&mut state, &mut tasks, delta);
-            compute_projections(&mut state, &tasks);
+
+            handle_seer_projections(&mut state, &mut seer);
+
+            computed_deltas.send(delta).unwrap();
 
             delta_sum += delta;
             delta_count += 1;
@@ -94,14 +101,8 @@ fn compute_state(mut state: &mut State, tasks: &mut Tasks, delta: f64) {
     }
 }
 
-fn compute_projections(state: &mut State, tasks: &Tasks) {
-    // remove current projections, re-initialise nil curves
-    state.drawables.orbit_curves.clear();
-    for body in state.drawables.orbit_bodies.iter() {
-        let mut curve = OrbitCurve::new();
-        curve.add_plot(body.center);
-        state.drawables.orbit_curves.push(curve);
-    }
+fn handle_seer_projections(state: &mut State, seer: &mut Seer) {
+    state.drawables.orbit_curves = seer.projection.latest().clone();
 
     // fade between [10, 20]
     if state.zoom > 10.0 {
@@ -109,31 +110,71 @@ fn compute_projections(state: &mut State, tasks: &Tasks) {
         for curve in state.drawables.orbit_curves.iter_mut() {
             curve.opacity = opacity;
         }
-        if opacity <= 0.0 {
-            return
-        }
     }
     else {
         for curve in state.drawables.orbit_curves.iter_mut() {
             curve.opacity = 1.0;
         }
     }
+}
 
-    // separate onto thread, don't require all curve points computed now, just whenever they
-    // can be by the other thread. Once the thread has computed enough, it restarts with the
-    // latest state and starts updating the curve positions
-    let mut f_tasks = tasks.clone();
-    f_tasks.zoom = None;
-    f_tasks.follow = None;
-    let mut f_state = state.clone();
+struct Seer {
+    pub projection: svsc::Getter<Vec<OrbitCurve>>,
+}
 
-    let f_delta = 0.05;
-    for _ in 0..1300 {
-        compute_state(&mut f_state, &mut f_tasks, f_delta);
-        for (idx, curve) in state.drawables.orbit_curves.iter_mut().enumerate() {
-            let ref body = &f_state.drawables.orbit_bodies[idx];
-            curve.add_plot(body.center);
-        }
+const SEER_COMPUTE_DELTA: f64 = 0.005;
+const SEER_MAX_PLOTS: usize = 10000;
+
+impl Seer {
+    fn new(initial_state: State, main_deltas_receiver: mpsc::Receiver<f64>) -> Seer {
+        let (projection_get, projection) = svsc::channel(Vec::new());
+
+        thread::spawn(move|| {
+            let mut nil_tasks = Tasks::new();
+            let mut plots = 0;
+            let mut state = initial_state;
+            let mut main_deltas_ahead = 0.0;
+
+            state.drawables.orbit_curves.clear();
+            for body in state.drawables.orbit_bodies.iter() {
+                let mut curve = OrbitCurve::new();
+                curve.plots.push(body.center);
+                state.drawables.orbit_curves.push(curve);
+            }
+
+            loop {
+                // consider main loop computed deltas and adjust
+                while let Ok(delta) = main_deltas_receiver.try_recv() {
+                    main_deltas_ahead += delta;
+                }
+                let outdated_plots = (main_deltas_ahead / SEER_COMPUTE_DELTA).floor();
+                if outdated_plots > 0.0 {
+                    main_deltas_ahead -= outdated_plots * SEER_COMPUTE_DELTA;
+                    plots -= outdated_plots as usize;
+                    for curve in state.drawables.orbit_curves.iter_mut() {
+                        curve.remove_oldest_plots(outdated_plots as usize);
+                    }
+                }
+
+                if plots >= SEER_MAX_PLOTS {
+                    thread::sleep(Duration::from_millis((SEER_COMPUTE_DELTA * 500.0).round() as u64));
+                    continue;
+                }
+
+                compute_state(&mut state, &mut nil_tasks, SEER_COMPUTE_DELTA);
+                for (idx, curve) in state.drawables.orbit_curves.iter_mut().enumerate() {
+                    let ref body = &state.drawables.orbit_bodies[idx];
+                    curve.plots.push(body.center);
+                }
+                plots += 1;
+
+                if let Err(_) = projection.update(state.drawables.orbit_curves.clone()) {
+                    // dead getter
+                    break;
+                }
+            }
+        });
+
+        Seer { projection: projection_get }
     }
-    state.drawables.orbit_curves.retain(|ref c| c.is_drawable());
 }

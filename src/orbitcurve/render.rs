@@ -7,6 +7,7 @@ use gfx;
 use gfx_shader_watch::*;
 
 const LINE_WIDTH: f32 = 0.1;
+const MIN_PLOT_DISTANCE: f64 = 0.25;
 
 #[derive(VertexData, Debug, Clone, Copy)]
 pub struct OrbitCurveVertex {
@@ -77,7 +78,24 @@ impl<R: Resources, F: Factory<R>> OrbitCurveBrush<R, F> {
                    encoder: &mut Encoder<R, C>,
                    transform: &UserViewTransform,
                    curve: &OrbitCurve) where C: CommandBuffer<R> {
-        if curve.opacity < 0.00001 {
+        if curve.opacity < 0.00001 || !curve.is_drawable() {
+            return;
+        }
+
+        // Reduce plots to a min distance apart from one another, to reduce render load
+        let mut plots = Vec::new();
+        plots.push(curve.plots[0]);
+        let mut last_plot = plots[0];
+        for plot in curve.plots.iter() {
+            if last_plot.distance(*plot) > MIN_PLOT_DISTANCE {
+                let plot = plot.clone();
+                plots.push(plot);
+                last_plot = plot;
+            }
+        }
+        let curve = OrbitCurve { plots, opacity: curve.opacity };
+
+        if !curve.is_drawable() {
             return;
         }
 

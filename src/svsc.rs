@@ -7,13 +7,22 @@ pub struct Getter<T> {
 }
 
 impl<T> Getter<T> {
-    pub fn latest(&mut self) -> &T {
+    fn update_latest(&mut self) {
         if let Ok(mut latest_set) = self.latest_set.lock() {
             if let Some(value) = latest_set.take() {
                 self.latest = value;
             }
         }
+    }
+
+    pub fn latest(&mut self) -> &T {
+        self.update_latest();
         &self.latest
+    }
+
+    pub fn latest_mut(&mut self) -> &mut T {
+        self.update_latest();
+        &mut self.latest
     }
 }
 
