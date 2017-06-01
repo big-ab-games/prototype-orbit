@@ -10,7 +10,7 @@ struct OrbitCurveBezier {
 };
 
 uniform beziers {
-    OrbitCurveBezier u_beziers[1024]; // TODO hardcode max instances, can do better?
+    OrbitCurveBezier u_beziers[1024];
 };
 
 in vec2 model_pos;

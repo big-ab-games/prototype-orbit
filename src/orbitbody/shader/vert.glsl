@@ -10,7 +10,7 @@ struct OrbitBodyTransform {
 };
 
 uniform local_transform {
-    OrbitBodyTransform locals[1024]; // TODO hardcode max instances, can do better?
+    OrbitBodyTransform locals[1024];
 };
 
 in vec2 position;
