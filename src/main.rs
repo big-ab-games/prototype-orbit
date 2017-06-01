@@ -117,6 +117,7 @@ pub fn main() {
 
         let projection = state.projection();
         let view = state.view.clone();
+        let visible_world_range = state.visible_world_range();
 
         encoder.clear(&main_color, CLEAR_COLOR);
         encoder.clear_depth(&main_depth, 1.0);
@@ -129,11 +130,12 @@ pub fn main() {
         background_brush.draw(&mut encoder, &transform);
 
         while state.drawables.orbit_curves.len() > orbit_curve_brushes.len() {
+            // add a curve brush per necessary curve, keep them forever
             orbit_curve_brushes.push(orbitcurve::render::OrbitCurveBrush::new(
                     factory.clone(), &main_color, &main_depth));
         }
         for (idx, curve) in state.drawables.orbit_curves.iter().enumerate() {
-            orbit_curve_brushes[idx].draw(&mut encoder, &transform, &curve);
+            orbit_curve_brushes[idx].draw(&mut encoder, &transform, &curve, visible_world_range);
         }
 
         orbit_body_brush.draw(&mut encoder, &transform, &state.drawables.orbit_bodies);

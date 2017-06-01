@@ -48,6 +48,24 @@ pub struct OrbitCurveBrush<R: Resources, F: Factory<R>> {
     data: orbitbodypipe::Data<R>,
 }
 
+struct WorldView {
+    min: Vector2<f32>,
+    max: Vector2<f32>,
+}
+
+impl WorldView {
+    fn contains(&self, p: Vector2<f32>) -> bool {
+        p.x >= self.min.x && p.x <= self.max.x && p.y >= self.min.y && p.y <= self.max.y
+    }
+
+    fn with_extra(&self, val: f32) -> WorldView {
+        WorldView {
+            min: Vector2::new(self.min.x - val, self.min.y - val),
+            max: Vector2::new(self.max.x + val, self.max.y + val),
+        }
+    }
+}
+
 impl<R: Resources, F: Factory<R>> OrbitCurveBrush<R, F> {
     pub fn new(mut factory: F,
                target: &handle::RenderTargetView<R, ColorFormat>,
@@ -76,10 +94,13 @@ impl<R: Resources, F: Factory<R>> OrbitCurveBrush<R, F> {
     pub fn draw<C>(&mut self,
                    encoder: &mut Encoder<R, C>,
                    transform: &UserViewTransform,
-                   curve: &OrbitCurve) where C: CommandBuffer<R> {
+                   curve: &OrbitCurve,
+                   (visible_min, visible_max): (Vector2<f32>, Vector2<f32>))
+                   where C: CommandBuffer<R> {
         if curve.opacity < 0.00001 || !curve.is_drawable() {
             return;
         }
+        let view = WorldView { min: visible_min, max: visible_max }.with_extra(LINE_WIDTH);
 
         encoder.update_constant_buffer(&self.data.global_transform, transform);
         self.data.beziers = self.pso_cell.factory().create_constant_buffer(curve.plots.len() - 1);
@@ -98,6 +119,15 @@ impl<R: Resources, F: Factory<R>> OrbitCurveBrush<R, F> {
         for plot_idx in 0..(curve.plots.len()-1) {
             let c1 = curve.plots[plot_idx].cast();
             let c2 = curve.plots[plot_idx + 1].cast();
+
+            if !view.contains(c1) && !view.contains(c2) {
+                if (plot_idx == 0 || !view.contains(curve.plots[plot_idx-1].cast())) &&
+                    (plot_idx == curve.plots.len()-2 || !view.contains(curve.plots[plot_idx+2].cast())) {
+                    // Current points, and neighbours are outsite the current view, so skip
+                    continue;
+                }
+            }
+
             let c2_to_cavg = (cavg - c2).normalize();
 
             let v3 = OrbitCurveVertex::new(c2 - c2_to_cavg * LINE_WIDTH / 2.0, plot_idx + 1);

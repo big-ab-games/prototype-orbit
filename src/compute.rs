@@ -52,7 +52,7 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
             // far from the orbit bodies, we spin up an apprentice in parallel seeded with
             // newer state. When the apprentice as 99% of the plots of his master we switch
             // to using the apprentice as the new seer
-            if seer_apprentice.is_none() && state.drawables.curve_body_mismatch() {
+            if seer_apprentice.is_none() && state.drawables.curve_body_mismatch(SEER_FAULT_TOLERANCE) {
                 debug!("Curve mismatch detected, getting an apprentice seer...");
                 seer_apprentice = Some(Seer::new(state.clone()));
             }
@@ -151,6 +151,7 @@ struct Seer {
 
 const SEER_COMPUTE_DELTA: f64 = 0.001;
 const SEER_MAX_PLOTS: usize = 50_000;
+const SEER_FAULT_TOLERANCE: f64 = 0.5;
 
 use uuid::Uuid;
 

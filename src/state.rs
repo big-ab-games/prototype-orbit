@@ -6,18 +6,6 @@ use uuid::Uuid;
 use std::f64;
 
 #[derive(Clone, Debug)]
-pub struct State {
-    pub origin: Vector2<f32>,
-    pub zoom: f32,
-    pub screen_width: u32,
-    pub screen_height: u32,
-    pub view: Matrix4<f32>,
-    pub user_quit: bool,
-    pub drawables: Drawables,
-    pub debug_info: ComputeDebugInfo,
-}
-
-#[derive(Clone, Debug)]
 pub struct Drawables {
     pub orbit_bodies: Vec<OrbitBody>,
     pub orbit_curves: Vec<OrbitCurve>,
@@ -60,10 +48,11 @@ impl Drawables {
         }
     }
 
-    pub fn curve_body_mismatch(&self) -> bool {
+    /// :fault_tolerance fraction of smallest body radius error tolerance, in range (0,1]
+    pub fn curve_body_mismatch(&self, fault_tolerance: f64) -> bool {
         let mismatch_distance = self.orbit_bodies.iter()
             .map(|b| b.radius)
-            .fold(1./0., f64::min) * 0.5;
+            .fold(1./0., f64::min) * fault_tolerance;
 
         for (idx, curve) in self.orbit_curves.iter().enumerate() {
             if curve.plots.len() > 0 {
@@ -81,6 +70,18 @@ fn birds_eye_at_z(height: f32) -> Matrix4<f32> {
     let mut view = Matrix4::identity();
     view.z.z = height;
     view
+}
+
+#[derive(Clone, Debug)]
+pub struct State {
+    pub origin: Vector2<f32>,
+    pub zoom: f32,
+    pub screen_width: u32,
+    pub screen_height: u32,
+    pub view: Matrix4<f32>,
+    pub user_quit: bool,
+    pub drawables: Drawables,
+    pub debug_info: ComputeDebugInfo,
 }
 
 impl State {
@@ -120,6 +121,14 @@ impl State {
 
     pub fn screen_to_world<V: Into<Vector2<i32>>>(&self, pixels: V) -> Vector2<f32> {
         self.origin + self.screen_to_world_normalised(pixels)
+    }
+
+    /// Returns tuple with (min, max) coord corners
+    /// - left: bottom left, least x & y visible world location
+    /// - right: top right, most x & y visible world location
+    pub fn visible_world_range(&self) -> (Vector2<f32>, Vector2<f32>) {
+        (self.screen_to_world(Vector2::new(0, self.screen_height as i32)),
+         self.screen_to_world(Vector2::new(self.screen_width as i32, 0)))
     }
 }
 
@@ -187,5 +196,12 @@ mod state_test {
         let mut state = State::new(160, 90);
         state.zoom = 0.33f32;
         test_screen_to_world(state);
+    }
+
+    #[test]
+    fn visible_world_range() {
+        let mut state = State::new(180, 90);
+        state.zoom = 3f32;
+        assert_eq!(state.visible_world_range(), ((-6_f32, -3_f32).into(), (6_f32, 3_f32).into()));
     }
 }
