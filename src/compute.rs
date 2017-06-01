@@ -48,27 +48,34 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
             compute_state(&mut state, &mut tasks, delta);
 
             handle_seer_projections(&mut state, &mut seer);
-            // if we can tell the seer is losing his touch, ie his curves start erroneously
-            // far from the orbit bodies, we spin up an apprentice in parallel seeded with
-            // newer state. When the apprentice as 99% of the plots of his master we switch
-            // to using the apprentice as the new seer
-            if seer_apprentice.is_none() && state.drawables.curve_body_mismatch(SEER_FAULT_TOLERANCE) {
-                debug!("Curve mismatch detected, getting an apprentice seer...");
-                seer_apprentice = Some(Seer::new(state.clone()));
+
+            if seer_apprentice.is_none() {
+                // if we can tell the seer is losing his touch, ie his curves start erroneously
+                // far from the orbit bodies, we spin up an apprentice in parallel seeded with
+                // newer state. When the apprentice as 99% of the plots of his master we switch
+                // to using the apprentice as the new seer
+                if state.drawables.curve_body_mismatch(SEER_FAULT_TOLERANCE) {
+                    debug!("Curve mismatch detected, getting an apprentice seer...");
+                    seer_apprentice = Some(Seer::new(state.clone()));
+                }
+                else if seer.min_plot_distance != Seer::min_plot_distance_at_zoom(state.zoom) {
+                    debug!("Zoom change needs seer plot accuracy, getting an apprentice seer...");
+                    seer_apprentice = Some(Seer::new(state.clone()));
+                }
             }
             else if let Some(mut apprentice) = seer_apprentice.take() {
                 if state.drawables.orbit_curves.len() > 0 {
-                    let apprentice_projection_curves = apprentice.projection.latest().len();
-                    let current_projection_size = state.drawables.orbit_curves[0].plots.len() as f64;
-                    if apprentice_projection_curves > 0 &&
-                        apprentice.projection.latest()[0].plots.len() as f64 >=
-                        current_projection_size * 0.99 {
+                    if apprentice.is_approx_as_good_as(&mut seer) {
                         debug!("Apprentice seer is ready, he's the new seer");
                         seer = apprentice;
                     }
                     else { // still needs training
                         seer_apprentice = Some(apprentice);
                     }
+                }
+                else {
+                    // shouldn't happen
+                    debug!("No curves...");
                 }
             }
 
@@ -147,6 +154,7 @@ fn handle_seer_projections(state: &mut State, seer: &mut Seer) {
 struct Seer {
     pub projection: svsc::Getter<Vec<OrbitCurve>>,
     pub main_deltas: mpsc::Sender<f64>,
+    pub min_plot_distance: f64,
 }
 
 const SEER_COMPUTE_DELTA: f64 = 0.001;
@@ -156,7 +164,26 @@ const SEER_FAULT_TOLERANCE: f64 = 0.5;
 use uuid::Uuid;
 
 impl Seer {
+    fn min_plot_distance_at_zoom(zoom: f32) -> f64 {
+        return if zoom >= 8.1 { 0.3 }
+            else if zoom >= 2.1 { 0.2 }
+            else if zoom >= 1.1 { 0.1 }
+            else { 0.05 }
+    }
+
+    fn is_approx_as_good_as(&mut self, other: &mut Seer) -> bool {
+        let plots = self.projection.latest().get(0)
+            .map(|c| c.plots.len())
+            .unwrap_or(0) as f64 * self.min_plot_distance;
+        let other_plots = other.projection.latest().get(0)
+            .map(|c| c.plots.len())
+            .unwrap_or(0)  as f64 * other.min_plot_distance;
+
+        plots >= other_plots * 0.99
+    }
+
     fn new(initial_state: State) -> Seer {
+        let min_plot_distance = Seer::min_plot_distance_at_zoom(initial_state.zoom);
         let (tx, main_deltas_receiver) = mpsc::channel();
         let (projection_get, projection) = svsc::channel(Vec::new());
 
@@ -218,7 +245,7 @@ impl Seer {
                         // filtering curves is quite intensive, so use another thread
                         let mut curves_for_render = Vec::new();
                         for curve in curves.iter() {
-                            curves_for_render.push(curve.with_minimum_plot_distance(0.25));
+                            curves_for_render.push(curve.with_minimum_plot_distance(min_plot_distance));
                         }
 
                         if let Err(_) = sender.send(curves_for_render) {
@@ -241,6 +268,7 @@ impl Seer {
         Seer {
             projection: projection_get,
             main_deltas: tx,
+            min_plot_distance,
         }
     }
 }

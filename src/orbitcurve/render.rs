@@ -100,6 +100,12 @@ impl<R: Resources, F: Factory<R>> OrbitCurveBrush<R, F> {
         if curve.opacity < 0.00001 || !curve.is_drawable() {
             return;
         }
+
+        // let curve = curve.with_minimum_plot_distance(0.3);
+        // if !curve.is_drawable() {
+        //     return;
+        // }
+
         let view = WorldView { min: visible_min, max: visible_max }.with_extra(LINE_WIDTH);
 
         encoder.update_constant_buffer(&self.data.global_transform, transform);
