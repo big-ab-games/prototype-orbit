@@ -20,10 +20,10 @@ impl<T> Getter<T> {
         &self.latest
     }
 
-    pub fn latest_mut(&mut self) -> &mut T {
-        self.update_latest();
-        &mut self.latest
-    }
+    // pub fn latest_mut(&mut self) -> &mut T {
+    //     self.update_latest();
+    //     &mut self.latest
+    // }
 }
 
 #[derive(Clone)]

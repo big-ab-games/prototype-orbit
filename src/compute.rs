@@ -123,7 +123,7 @@ struct Seer {
 }
 
 const SEER_COMPUTE_DELTA: f64 = 0.005;
-const SEER_MAX_PLOTS: usize = 10000;
+const SEER_MAX_PLOTS: usize = 20_000;
 
 impl Seer {
     fn new(initial_state: State, main_deltas_receiver: mpsc::Receiver<f64>) -> Seer {
@@ -134,6 +134,9 @@ impl Seer {
             let mut plots = 0;
             let mut state = initial_state;
             let mut main_deltas_ahead = 0.0;
+
+            let mut filtering = false;
+            let (tx, filtered_updates) = mpsc::channel();
 
             state.drawables.orbit_curves.clear();
             for body in state.drawables.orbit_bodies.iter() {
@@ -150,7 +153,12 @@ impl Seer {
                 let outdated_plots = (main_deltas_ahead / SEER_COMPUTE_DELTA).floor();
                 if outdated_plots > 0.0 {
                     main_deltas_ahead -= outdated_plots * SEER_COMPUTE_DELTA;
-                    plots -= outdated_plots as usize;
+                    if plots > outdated_plots as usize {
+                        plots -= outdated_plots as usize;
+                    }
+                    else {
+                        plots = 0;
+                    }
                     for curve in state.drawables.orbit_curves.iter_mut() {
                         curve.remove_oldest_plots(outdated_plots as usize);
                     }
@@ -168,9 +176,26 @@ impl Seer {
                 }
                 plots += 1;
 
-                if let Err(_) = projection.update(state.drawables.orbit_curves.clone()) {
-                    // dead getter
-                    break;
+                if !filtering {
+                    let curves = state.drawables.orbit_curves.clone();
+                    let sender = tx.clone();
+                    thread::spawn(move|| {
+                        // filtering curves is quite intensive, so use another thread
+                        let mut curves_for_render = Vec::new();
+                        for curve in curves.iter() {
+                            curves_for_render.push(curve.with_minimum_plot_distance(0.25));
+                        }
+                        sender.send(curves_for_render).unwrap();
+                    });
+                    filtering = true;
+                }
+
+                if let Ok(curves) = filtered_updates.try_recv() {
+                    if let Err(_) = projection.update(curves) {
+                        // dead getter
+                        break;
+                    }
+                    filtering = false;
                 }
             }
         });

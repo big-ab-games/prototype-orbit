@@ -29,7 +29,22 @@ impl OrbitCurve {
     }
 
     pub fn is_drawable(&self) -> bool {
-        self.plots.len() > 3 && self.mean_plot().distance(self.plots[0]) > 0.1
+        self.plots.len() > 3
+    }
+
+    pub fn with_minimum_plot_distance(&self, min_distance: f64) -> OrbitCurve {
+        // Reduce plots to a min distance apart from one another, to reduce render load
+        let mut plots = Vec::new();
+        plots.push(self.plots[0]);
+        let mut last_plot = plots[0];
+        for plot in self.plots.iter() {
+            if last_plot.distance(*plot) > min_distance {
+                let plot = plot.clone();
+                plots.push(plot);
+                last_plot = plot;
+            }
+        }
+        OrbitCurve { plots, opacity: self.opacity }
     }
 }
 
