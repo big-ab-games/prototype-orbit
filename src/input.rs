@@ -208,9 +208,28 @@ impl UserKeys {
 
     pub fn handle(&mut self, state: &mut State, _delta: f32, event: &WindowEvent, tasks: &mut Tasks) {
         match event {
-            &WindowEvent::KeyboardInput(_, _, Some(VirtualKeyCode::Home), _) => {
-                tasks.follow = None;
-                tasks.zoom = Some(Zoomer::zoom_to_world(state.zoom, (0f32, 0f32), &state));
+            &WindowEvent::KeyboardInput(ElementState::Pressed, _, Some(keypress), _) => {
+                let body = match keypress {
+                    VirtualKeyCode::Home => state.drawables.orbit_bodies.iter()
+                        .max_by_key(|x| x.mass.round() as i64),
+                    VirtualKeyCode::Key1 => state.drawables.orbit_bodies.get(0),
+                    VirtualKeyCode::Key2 => state.drawables.orbit_bodies.get(1),
+                    VirtualKeyCode::Key3 => state.drawables.orbit_bodies.get(2),
+                    VirtualKeyCode::Key4 => state.drawables.orbit_bodies.get(3),
+                    VirtualKeyCode::Key5 => state.drawables.orbit_bodies.get(4),
+                    VirtualKeyCode::Key6 => state.drawables.orbit_bodies.get(5),
+                    VirtualKeyCode::Key7 => state.drawables.orbit_bodies.get(6),
+                    VirtualKeyCode::Key8 => state.drawables.orbit_bodies.get(7),
+                    VirtualKeyCode::Key9 => state.drawables.orbit_bodies.get(8),
+                    VirtualKeyCode::Key0 => state.drawables.orbit_bodies.get(9),
+                    _ => None
+                };
+                if let Some(body) = body {
+                    tasks.follow = None;
+                    tasks.zoom = Some(Zoomer::zoom_to_world(state.zoom,
+                                                            body.center.cast().into(),
+                                                            &state));
+                }
             },
             _ => ()
         }
