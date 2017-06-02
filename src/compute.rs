@@ -22,7 +22,7 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
         let mut user_mouse = UserMouse::new();
         let mut user_keys = UserKeys::new();
 
-        let mut seer = Seer::new(initial_state.clone());
+        let mut seer = Seer::new(initial_state.clone(), tasks.clone());
         let mut seer_apprentice = None;
 
         let (mut delta_sum, mut delta_count) = (0.0, 0);
@@ -50,17 +50,23 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
             handle_seer_projections(&mut state, &mut seer);
 
             if seer_apprentice.is_none() {
+                let mut zoom = tasks.zoom.as_ref()
+                    .map(|z| z.zoom_destination())
+                    .unwrap_or(state.zoom);
+                if zoom > state.zoom {
+                    zoom = state.zoom;
+                }
                 // if we can tell the seer is losing his touch, ie his curves start erroneously
                 // far from the orbit bodies, we spin up an apprentice in parallel seeded with
                 // newer state. When the apprentice as 99% of the plots of his master we switch
                 // to using the apprentice as the new seer
                 if state.drawables.curve_body_mismatch(SEER_FAULT_TOLERANCE) {
                     debug!("Curve mismatch detected, getting an apprentice seer...");
-                    seer_apprentice = Some(Seer::new(state.clone()));
+                    seer_apprentice = Some(Seer::new(state.clone(), tasks.clone()));
                 }
-                else if seer.min_plot_distance != Seer::min_plot_distance_at_zoom(state.zoom) {
+                else if seer.min_plot_distance != Seer::min_plot_distance_at_zoom(zoom) {
                     debug!("Zoom change needs seer plot accuracy, getting an apprentice seer...");
-                    seer_apprentice = Some(Seer::new(state.clone()));
+                    seer_apprentice = Some(Seer::new(state.clone(), tasks.clone()));
                 }
             }
             else if let Some(mut apprentice) = seer_apprentice.take() {
@@ -164,10 +170,14 @@ const SEER_FAULT_TOLERANCE: f64 = 0.5;
 use uuid::Uuid;
 
 impl Seer {
+    /// The lower the min plot distance the better the curve approximations
+    /// with higher load on the GPU, these values are an attempt to optimise
+    /// both concerns at different view levels
     fn min_plot_distance_at_zoom(zoom: f32) -> f64 {
-        return if zoom >= 8.1 { 0.3 }
-            else if zoom >= 2.1 { 0.2 }
-            else if zoom >= 1.1 { 0.1 }
+        return if zoom >= 8.5 { 0.27 }
+            else if zoom >= 4.5 { 0.18 }
+            else if zoom >= 2.5 { 0.15 }
+            else if zoom >= 1.5 { 0.1 }
             else { 0.05 }
     }
 
@@ -177,18 +187,20 @@ impl Seer {
             .unwrap_or(0) as f64 * self.min_plot_distance;
         let other_plots = other.projection.latest().get(0)
             .map(|c| c.plots.len())
-            .unwrap_or(0)  as f64 * other.min_plot_distance;
+            .unwrap_or(0) as f64 * other.min_plot_distance;
 
         plots >= other_plots * 0.99
     }
 
-    fn new(initial_state: State) -> Seer {
-        let min_plot_distance = Seer::min_plot_distance_at_zoom(initial_state.zoom);
+    fn new(initial_state: State, tasks: Tasks) -> Seer {
         let (tx, main_deltas_receiver) = mpsc::channel();
         let (projection_get, projection) = svsc::channel(Vec::new());
 
+        let zoom = tasks.zoom.as_ref().map(|z| z.zoom_destination()).unwrap_or(initial_state.zoom);
+        let min_plot_distance = Seer::min_plot_distance_at_zoom(zoom);
+
         thread::spawn(move|| {
-            let mut nil_tasks = Tasks::new();
+            let mut tasks = tasks.world_affecting();
             let mut plots = 0;
             let mut state = initial_state;
             let mut main_deltas_ahead = 0.0;
@@ -231,7 +243,7 @@ impl Seer {
                     continue;
                 }
 
-                compute_state(&mut state, &mut nil_tasks, SEER_COMPUTE_DELTA);
+                compute_state(&mut state, &mut tasks, SEER_COMPUTE_DELTA);
                 for (idx, curve) in state.drawables.orbit_curves.iter_mut().enumerate() {
                     let ref body = &state.drawables.orbit_bodies[idx];
                     curve.plots.push(body.center);

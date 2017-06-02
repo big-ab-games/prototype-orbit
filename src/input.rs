@@ -116,6 +116,10 @@ impl Tasks {
             self.follow = Some(body.id);
         }
     }
+
+    pub fn world_affecting(&self) -> Tasks {
+        Tasks::new()
+    }
 }
 
 #[derive(Clone, Debug)]
