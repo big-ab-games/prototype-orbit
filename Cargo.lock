@@ -6,7 +6,7 @@ dependencies = [
  "easer 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx_macros 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "gfx_shader_watch 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gfx_shader_watch 0.3.0",
  "gfx_text 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gfx_window_glutin 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "glutin 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -384,8 +384,7 @@ dependencies = [
 
 [[package]]
 name = "gfx_shader_watch"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+version = "0.3.0"
 dependencies = [
  "gfx 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1189,7 +1188,6 @@ dependencies = [
 "checksum gfx_device_gl 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d96af24822f5cae879203bf72a929883525edc7dce8db17b9eba931b9e41e7a8"
 "checksum gfx_gl 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f25c3866329ab91b92bfbc4d5e1d8172607e804564d90b8fbecb96cbc366845d"
 "checksum gfx_macros 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d38f9e1d3f4705b26e73437e35fd71c955aba5781f6bb5391d37a166204d301f"
-"checksum gfx_shader_watch 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c3befdeaa40753f445bdc4cfc5d2e90f8f467802f049a6758a12cd962cd9d776"
 "checksum gfx_text 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)" = "84885f0ca1ed4ac88bc154c5e24723ab98d9bd5984c7f08d6a899b52a6ec049e"
 "checksum gfx_window_glutin 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0692417444d82059ef1d08c33d99d31511dbd4b1ae96fbca106fa087d9aa38ec"
 "checksum gif 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)" = "8a80d6fe9e52f637df9afd4779449a7be17c39cc9c35b01589bb833f956ba596"

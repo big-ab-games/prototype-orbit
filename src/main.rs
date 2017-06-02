@@ -74,7 +74,7 @@ pub fn main() {
 
     let events_loop = EventsLoop::new();
     let builder = WindowBuilder::new()
-        .with_title("Example".to_string())
+        .with_title("Orbits".to_string())
         .with_dimensions(1024, 768)
         .with_gl_profile(GlProfile::Core)
         .with_gl(GlRequest::Specific(Api::OpenGl, (3, 3)))

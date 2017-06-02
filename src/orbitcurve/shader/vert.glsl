@@ -1,5 +1,7 @@
 #version 330 core
 
+layout(std140) uniform;
+
 uniform global_transform {
     mat4 view;
     mat4 proj;

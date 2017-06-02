@@ -1,16 +1,18 @@
 #version 330 core
 
-uniform global_transform {
-    mat4 view;
-    mat4 proj;
-};
+layout(std140) uniform;
 
 struct OrbitBodyTransform {
     mat4 transform;
 };
 
+uniform global_transform {
+    mat4 view;
+    mat4 proj;
+};
+
 uniform local_transform {
-    OrbitBodyTransform locals[1024];
+    OrbitBodyTransform locals[1];
 };
 
 in vec2 position;

@@ -10,7 +10,7 @@ struct OrbitCurveBezier {
 };
 
 uniform beziers {
-    OrbitCurveBezier u_beziers[1024];
+    OrbitCurveBezier u_beziers[1];
 };
 
 in vec2 model_pos;

@@ -26,6 +26,14 @@ gfx_defines! {
     }
 }
 
+impl OrbitBodyTransform {
+    fn new(transform: [[f32; 4]; 4]) -> OrbitBodyTransform {
+        OrbitBodyTransform {
+            transform,
+        }
+    }
+}
+
 // equilateral triangle with incircle radius 1, and incircle center (0, 0)
 // ref: https://rechneronline.de/pi/equilateral-triangle.php
 //    C
@@ -110,8 +118,8 @@ impl<R: Resources, F: Factory<R>> OrbitBodyBrush<R, F> {
         }
 
         for idx in 0..bodies.len() {
-            encoder.update_buffer(&self.data.local_transform,
-                &[OrbitBodyTransform{ transform: local_transform(&bodies[idx]) }], idx).unwrap();
+            let locals = OrbitBodyTransform::new(local_transform(&bodies[idx]));
+            encoder.update_buffer(&self.data.local_transform, &[locals], idx).expect("OrbitBody draw");
         }
 
         encoder.draw(&self.slice, self.pso_cell.pso(), &self.data);
