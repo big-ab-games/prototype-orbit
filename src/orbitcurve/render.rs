@@ -66,6 +66,11 @@ impl WorldView {
     }
 }
 
+/// Returns a vector perpendicular to input via a 90 degree clockwise turn
+fn perp(vec: Vector2<f32>) -> Vector2<f32> {
+    Vector2::new(-vec.y, vec.x)
+}
+
 impl<R: Resources, F: Factory<R>> OrbitCurveBrush<R, F> {
     pub fn new(mut factory: F,
                target: &handle::RenderTargetView<R, ColorFormat>,
@@ -101,43 +106,53 @@ impl<R: Resources, F: Factory<R>> OrbitCurveBrush<R, F> {
             return;
         }
 
-        // let curve = curve.with_minimum_plot_distance(0.3);
-        // if !curve.is_drawable() {
-        //     return;
-        // }
-
         let view = WorldView { min: visible_min, max: visible_max }.with_extra(LINE_WIDTH);
 
         encoder.update_constant_buffer(&self.data.global_transform, transform);
         self.data.beziers = self.pso_cell.factory().create_constant_buffer(curve.plots.len() - 1);
 
-        let cavg = curve.mean_plot().cast();
         let mut all_verts = Vec::with_capacity((curve.plots.len() - 1) * 2 + 2);
 
-        let c1 = curve.plots[0].cast();
-        let c1_to_cavg = (cavg - c1).normalize();
+        let c_1st = curve.plots[0].cast();
+        let c_2nd = curve.plots[1].cast();
+        let perp_onwards = perp((c_2nd - c_1st).normalize_to(LINE_WIDTH / 2.0));
 
-        let v1 = OrbitCurveVertex::new(c1 - c1_to_cavg * LINE_WIDTH / 2.0, 0);
-        let v2 = OrbitCurveVertex::new(c1 + c1_to_cavg * LINE_WIDTH / 2.0, 0);
+        let v1 = OrbitCurveVertex::new(c_1st - perp_onwards, 0);
+        let v2 = OrbitCurveVertex::new(c_1st + perp_onwards, 0);
         all_verts.push(v1);
         all_verts.push(v2);
 
         for plot_idx in 0..(curve.plots.len()-1) {
+            // calculate vertices around c2
             let c1 = curve.plots[plot_idx].cast();
             let c2 = curve.plots[plot_idx + 1].cast();
+            let c3 = curve.plots.get(plot_idx + 2).map(|p| p.cast());
 
             if !view.contains(c1) && !view.contains(c2) {
                 if (plot_idx == 0 || !view.contains(curve.plots[plot_idx-1].cast())) &&
-                    (plot_idx == curve.plots.len()-2 || !view.contains(curve.plots[plot_idx+2].cast())) {
+                    (c3.is_none() || !view.contains(c3.unwrap())) {
                     // Current points, and neighbours are outsite the current view, so skip
                     continue;
                 }
             }
 
-            let c2_to_cavg = (cavg - c2).normalize();
+            let c1_perp_onwards = perp((c2 - c1).normalize_to(LINE_WIDTH / 2.0));
+            // calculate vertices at points using previous plot and perpendicular line width
+            let mut p3 = c2 - c1_perp_onwards;
+            let mut p4 = c2 + c1_perp_onwards;
 
-            let v3 = OrbitCurveVertex::new(c2 - c2_to_cavg * LINE_WIDTH / 2.0, plot_idx + 1);
-            let v4 = OrbitCurveVertex::new(c2 + c2_to_cavg * LINE_WIDTH / 2.0, plot_idx + 1);
+            if let Some(c3) = c3 {
+                // calculate vertices at points using next plot and perpendicular line width
+                let c2_perp_onwards = perp((c3 - c2).normalize_to(LINE_WIDTH / 2.0));
+                let p3_2 = c2 - c2_perp_onwards;
+                let p4_2 = c2 + c2_perp_onwards;
+                // take average of previous & next to reach mid
+                p3 = (p3 + p3_2) / 2.0;
+                p4 = (p4 + p4_2) / 2.0;
+            }
+
+            let v3 = OrbitCurveVertex::new(p3, plot_idx + 1);
+            let v4 = OrbitCurveVertex::new(p4, plot_idx + 1);
 
             all_verts.push(v3);
             all_verts.push(v4);

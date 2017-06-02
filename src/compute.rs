@@ -72,16 +72,15 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
             else if let Some(mut apprentice) = seer_apprentice.take() {
                 if state.drawables.orbit_curves.len() > 0 {
                     if apprentice.is_approx_as_good_as(&mut seer) {
-                        debug!("Apprentice seer is ready, he's the new seer");
+                        debug!("Promoting apprentice seer");
                         seer = apprentice;
                     }
                     else { // still needs training
                         seer_apprentice = Some(apprentice);
                     }
                 }
-                else {
-                    // shouldn't happen
-                    debug!("No curves...");
+                else { // shouldn't happen
+                    warn!("No curves...");
                 }
             }
 
@@ -274,7 +273,7 @@ impl Seer {
                     filtering = false;
                 }
             }
-            debug!("Seer {} forgetten", me);
+            trace!("Seer {} forgetten", me);
         });
 
         Seer {

@@ -24,10 +24,6 @@ impl OrbitCurve {
         }
     }
 
-    pub fn mean_plot(&self) -> Vector2<f64> {
-        self.plots.iter().sum::<Vector2<f64>>() / self.plots.len() as f64
-    }
-
     pub fn is_drawable(&self) -> bool {
         self.plots.len() > 3
     }
@@ -51,16 +47,6 @@ impl OrbitCurve {
 #[cfg(test)]
 mod orbitcurve_compute {
     use super::*;
-
-    #[test]
-    fn mean_plot() {
-        let mut curve = OrbitCurve::new();
-        curve.plots.push((1.0, 0.0).into());
-        curve.plots.push((1.0, 2.0).into());
-        curve.plots.push((1.0, 4.0).into());
-
-        assert_eq!(curve.mean_plot(), (1.0, 2.0).into());
-    }
 
     #[test]
     fn remove_oldest_plots() {
