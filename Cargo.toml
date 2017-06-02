@@ -5,11 +5,11 @@ authors = ["Alex Butler <alexheretic@gmail.com>"]
 
 [dependencies]
 gfx = "0"
-gfx_text = { git = "https://github.com/alexheretic/gfx_text", branch = "forward-compat" }
-gfx_window_glutin = { path = "../gfx/src/window/glutin", version = "*" }
+gfx_text = "0"
+gfx_window_glutin = "0"
 gfx_macros = "0"
 glutin = "0"
-gfx_shader_watch = { path = "../gfx-shader-watch", version = "*" }
+gfx_shader_watch = "0"
 log = "0"
 pretty_env_logger = "0"
 time = "0"
