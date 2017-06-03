@@ -30,14 +30,14 @@ impl OrbitCurve {
 
     pub fn with_minimum_plot_distance(&self, min_distance: f64) -> OrbitCurve {
         // Reduce plots to a min distance apart from one another, to reduce render load
+        let min_distance2 = min_distance * min_distance;
         let mut plots = Vec::new();
         plots.push(self.plots[0]);
         let mut last_plot = plots[0];
         for plot in self.plots.iter() {
-            if last_plot.distance(*plot) > min_distance {
-                let plot = plot.clone();
-                plots.push(plot);
-                last_plot = plot;
+            if last_plot.distance2(*plot) > min_distance2 {
+                plots.push(*plot);
+                last_plot = *plot;
             }
         }
         OrbitCurve { plots, opacity: self.opacity }
