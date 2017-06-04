@@ -19,3 +19,7 @@ notify = "4"
 easer = "0"
 num-traits = "0"
 uuid = { version = "0", features = ["v4"] }
+rayon = "0"
+
+[features]
+bench = []

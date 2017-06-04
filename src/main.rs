@@ -1,3 +1,7 @@
+#![cfg_attr(feature = "bench", feature(test))]
+#[cfg(feature = "bench")]
+extern crate test;
+
 #[macro_use] extern crate log;
 #[macro_use] extern crate gfx;
 #[macro_use] extern crate gfx_macros;
@@ -13,6 +17,7 @@ extern crate notify;
 extern crate easer;
 extern crate num_traits;
 extern crate uuid;
+extern crate rayon;
 
 mod input;
 mod state;

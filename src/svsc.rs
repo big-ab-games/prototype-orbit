@@ -45,7 +45,7 @@ impl<T> Updater<T> {
         }
     }
 
-    pub fn dead_getter(&self) -> bool {
+    pub fn getter_is_dead(&self) -> bool {
         self.latest.upgrade().is_none()
     }
 }
@@ -154,8 +154,8 @@ mod svsc_tests {
     #[test]
     fn is_alive() {
         let (val_get, val) = channel(0);
-        assert!(!val.dead_getter());
+        assert!(!val.getter_is_dead());
         mem::drop(val_get);
-        assert!(val.dead_getter());
+        assert!(val.getter_is_dead());
     }
 }

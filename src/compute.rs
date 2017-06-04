@@ -8,6 +8,7 @@ use time;
 use cgmath::*;
 use orbitcurve::OrbitCurve;
 use std::sync::mpsc;
+use rayon::prelude::*;
 
 const DESIRED_CPS: u32 = 1_080;
 const DESIRED_DELTA: f64 = 1.0 / DESIRED_CPS as f64;
@@ -235,7 +236,7 @@ impl Seer {
                 }
 
                 if plots >= SEER_MAX_PLOTS {
-                    if projection.dead_getter() {
+                    if projection.getter_is_dead() {
                         break; // dead getter, we've been forgotten
                     }
                     thread::sleep(Duration::from_millis((SEER_COMPUTE_DELTA * 500.0).round() as u64));
@@ -254,10 +255,9 @@ impl Seer {
                     let sender = tx.clone();
                     thread::spawn(move|| {
                         // filtering curves is quite intensive, so use another thread
-                        let mut curves_for_render = Vec::new();
-                        for curve in curves.iter() {
-                            curves_for_render.push(curve.with_minimum_plot_distance(min_plot_distance));
-                        }
+                        let curves_for_render = curves.par_iter()
+                            .map(|c| c.with_minimum_plot_distance(min_plot_distance))
+                            .collect();
 
                         if let Err(_) = sender.send(curves_for_render) {
                             // err => seer is forgotten, not interesting
