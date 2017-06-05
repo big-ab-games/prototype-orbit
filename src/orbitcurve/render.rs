@@ -33,7 +33,7 @@ pub struct OrbitCurveBezier {
 }
 
 gfx_defines! {
-    pipeline orbitbodypipe {
+    pipeline orbitcurvepipe {
         vbuf: VertexBuffer<OrbitCurveVertex> = (),
         out: BlendTarget<ColorFormat> = ("out_color", state::ColorMask::all(), preset::blend::ALPHA),
         out_depth: gfx::DepthTarget<DepthFormat> = preset::depth::LESS_EQUAL_WRITE,
@@ -43,9 +43,9 @@ gfx_defines! {
 }
 
 pub struct OrbitCurveBrush<R: Resources, F: Factory<R>> {
-    pso_cell: debug_watcher_pso_cell_type!(R, F, pipe = orbitbodypipe),
+    pso_cell: debug_watcher_pso_cell_type!(R, F, pipe = orbitcurvepipe),
     slice: Slice<R>,
-    data: orbitbodypipe::Data<R>,
+    data: orbitcurvepipe::Data<R>,
 }
 
 struct WorldView {
@@ -74,11 +74,11 @@ fn perp(vec: Vector2<f32>) -> Vector2<f32> {
 impl<R: Resources, F: Factory<R>> OrbitCurveBrush<R, F> {
     pub fn new(mut factory: F,
                target: &handle::RenderTargetView<R, ColorFormat>,
-               depth_target: &handle::DepthStencilView<R, DepthFormat>)
+               depth_target: &handle::DepthStencilView<R, DepthFormat>,)
                -> OrbitCurveBrush<R, F>
     {
         let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&[], ());
-        let data = orbitbodypipe::Data {
+        let data = orbitcurvepipe::Data {
             vbuf: vertex_buffer,
             out: target.clone(),
             out_depth: depth_target.clone(),
@@ -87,7 +87,7 @@ impl<R: Resources, F: Factory<R>> OrbitCurveBrush<R, F> {
         };
 
         let pso_cell = debug_watcher_pso_cell!(
-            pipe = orbitbodypipe,
+            pipe = orbitcurvepipe,
             vertex_shader = "shader/vert.glsl",
             fragment_shader = "shader/frag.glsl",
             factory = factory,

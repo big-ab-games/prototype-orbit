@@ -13,37 +13,39 @@ pub struct Drawables {
 
 impl Drawables {
     fn initial() -> Drawables {
+        let bodies = vec!(
+            OrbitBody {
+                id: Uuid::new_v4(),
+                center: (0.0, 0.0).into(),
+                radius: 1.2,
+                mass: 1660.0,
+                velocity: (0.0, -1.0).into(),
+            },
+            OrbitBody {
+                id: Uuid::new_v4(),
+                center: (3.5, 0.0).into(),
+                radius: 0.9,
+                mass: 1000.0,
+                velocity: (0.0, 1.6).into(),
+            },
+            OrbitBody {
+                id: Uuid::new_v4(),
+                center: (9.0, 0.0).into(),
+                radius: 0.3,
+                mass: 1.0,
+                velocity: (0.0, 2.0).into(),
+            },
+            OrbitBody {
+                id: Uuid::new_v4(),
+                center: (-12.0, 0.0).into(),
+                radius: 0.4,
+                mass: 2.0,
+                velocity: (0.0, -1.5).into(),
+            },
+        );
+
         Drawables {
-            orbit_bodies: vec!(
-                OrbitBody {
-                    id: Uuid::new_v4(),
-                    center: (0.0, 0.0).into(),
-                    radius: 1.2,
-                    mass: 1660.0,
-                    velocity: (0.0, -1.0).into(),
-                },
-                OrbitBody {
-                    id: Uuid::new_v4(),
-                    center: (3.5, 0.0).into(),
-                    radius: 0.9,
-                    mass: 1000.0,
-                    velocity: (0.0, 1.6).into(),
-                },
-                OrbitBody {
-                    id: Uuid::new_v4(),
-                    center: (9.0, 0.0).into(),
-                    radius: 0.3,
-                    mass: 1.0,
-                    velocity: (0.0, 2.0).into(),
-                },
-                OrbitBody {
-                    id: Uuid::new_v4(),
-                    center: (-12.0, 0.0).into(),
-                    radius: 0.4,
-                    mass: 2.0,
-                    velocity: (0.0, -1.5).into(),
-                },
-            ),
+            orbit_bodies: bodies,
             orbit_curves: Vec::new(),
         }
     }

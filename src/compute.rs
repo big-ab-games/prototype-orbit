@@ -6,7 +6,7 @@ use input::*;
 use state::*;
 use time;
 use cgmath::*;
-// use rayon::prelude::*;
+use rayon::prelude::*;
 use seer::*;
 
 const DESIRED_CPS: u32 = 1_080;
@@ -112,7 +112,7 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
     latest_state_getter
 }
 
-pub fn compute_state(mut state: &mut State, tasks: &mut Tasks, delta: f64) {
+fn compute_state_single(mut state: &mut State, tasks: &mut Tasks, delta: f64) {
     for idx in 0..state.drawables.orbit_bodies.len() {
         let mut new_velocity = state.drawables.orbit_bodies[idx].velocity;
 
@@ -138,6 +138,37 @@ pub fn compute_state(mut state: &mut State, tasks: &mut Tasks, delta: f64) {
     }
 }
 
+fn compute_state_par(mut state: &mut State, tasks: &mut Tasks, delta: f64) {
+    let bodies = state.drawables.orbit_bodies.clone();
+    state.drawables.orbit_bodies.par_iter_mut().for_each(|body| {
+        body.velocity += bodies.par_iter()
+            .filter(|other| other.id != body.id)
+            .map(|other| {
+                let dist_squared = body.center.distance2(other.center);
+                let acceleration_scalar = GRAVITY * other.mass / dist_squared;
+                let accelaration = (other.center - body.center).normalize_to(acceleration_scalar);
+                delta * accelaration
+            })
+            .sum();
+    });
+
+    tasks.update(&mut state);
+
+    state.drawables.orbit_bodies.par_iter_mut().for_each(|body| {
+        body.update(delta);
+    });
+}
+
+pub fn compute_state(mut state: &mut State, tasks: &mut Tasks, delta: f64) {
+    // benchmarks currently show > 16*4 bodies as the sweet spot for parallel impl
+    if state.drawables.orbit_bodies.len() > 64 {
+        compute_state_par(state, tasks, delta)
+    }
+    else {
+        compute_state_single(state, tasks, delta)
+    }
+}
+
 fn handle_seer_projections(state: &mut State, seer: &mut Seer) {
     state.drawables.orbit_curves = seer.projection.latest().clone();
 
@@ -157,17 +188,16 @@ fn handle_seer_projections(state: &mut State, seer: &mut Seer) {
 
 #[cfg(feature = "bench")]
 #[cfg(test)]
-mod compute {
+mod compute_bench {
     use super::*;
     use uuid::Uuid;
     use orbitbody::*;
+    use rayon;
 
     use test::Bencher;
 
-    #[bench]
-    fn bench_compute_empty_tasks(b: &mut Bencher) {
-        let mut state = State::new(1980, 1440);
-        state.drawables = Drawables {
+    fn test_drawables() -> Drawables {
+        Drawables {
             orbit_bodies: vec!(
                 OrbitBody {
                     id: Uuid::new_v4(),
@@ -198,13 +228,87 @@ mod compute {
                     velocity: (0.0, -1.5).into(),
                 },
             ),
-            orbit_curves: Vec::new(),
-        };
-
-        let mut tasks = Tasks::new();
-
-        b.iter(|| {
-            compute_state(&mut state, &mut tasks, 0.001);
-        });
+            orbit_curves: vec!(),
+        }
     }
+
+    fn setup_with_load(load: usize) -> State {
+        let mut state = State::new(1980, 1440);
+        state.drawables = Drawables {
+            orbit_bodies: vec!(),
+            orbit_curves: vec!(),
+        };
+        // 100x few bodies load
+        for i in 0..load {
+            for j in 0..load {
+                for mut body in test_drawables().orbit_bodies {
+                    body.center.x += i as f64 * 5.0;
+                    body.center.y += j as f64 * 5.0;
+                    state.drawables.orbit_bodies.push(body);
+                }
+            }
+        }
+        state
+    }
+
+    macro_rules! bench_single {
+        ($name:ident, $load:expr) => {
+            #[bench]
+            fn $name(b: &mut Bencher) {
+                let mut state = setup_with_load($load);
+                let mut tasks = Tasks::new();
+                b.iter(|| compute_state_single(&mut state, &mut tasks, 0.001));
+            }
+        }
+    }
+
+    macro_rules! bench_par {
+        ($name:ident, $load:expr) => {
+            #[bench]
+            fn $name(b: &mut Bencher) {
+                let mut state = setup_with_load($load);
+                let mut tasks = Tasks::new();
+                // err probably just means has already been called
+                rayon::initialize(rayon::Configuration::new()).is_err();
+
+
+                b.iter(|| compute_state_par(&mut state, &mut tasks, 0.001));
+            }
+        }
+    }
+
+    macro_rules! bench_default {
+        ($name:ident, $load:expr) => {
+            #[bench]
+            fn $name(b: &mut Bencher) {
+                let mut state = setup_with_load($load);
+                let mut tasks = Tasks::new();
+                // err probably just means has already been called
+                rayon::initialize(rayon::Configuration::new()).is_err();
+                
+                b.iter(|| compute_state(&mut state, &mut tasks, 0.001));
+            }
+        }
+    }
+
+    // bench_single!(bench_compute_1x_bodies_single,   1);
+    // bench_single!(bench_compute_9x_bodies_single,   3);
+    // bench_single!(bench_compute_16x_bodies_single,  4);
+    bench_single!(bench_compute_25x_bodies_single,  5);
+    // bench_single!(bench_compute_36x_bodies_single,  6);
+    // bench_single!(bench_compute_100x_bodies_single, 10);
+
+    bench_par!(bench_compute_1x_bodies_par,   1);
+    bench_par!(bench_compute_9x_bodies_par,   3);
+    bench_par!(bench_compute_16x_bodies_par,  4);
+    // bench_par!(bench_compute_25x_bodies_par,  5);
+    // bench_par!(bench_compute_36x_bodies_par,  6);
+    // bench_par!(bench_compute_100x_bodies_par, 10);
+
+    bench_default!(bench_compute_1x_bodies_auto,   1);
+    bench_default!(bench_compute_9x_bodies_auto,   3);
+    bench_default!(bench_compute_16x_bodies_auto,  4);
+    bench_default!(bench_compute_25x_bodies_auto,  5);
+    bench_default!(bench_compute_36x_bodies_auto,  6);
+    bench_default!(bench_compute_100x_bodies_auto, 10);
 }

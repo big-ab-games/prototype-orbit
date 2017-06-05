@@ -38,7 +38,6 @@ use std::time::Duration;
 use state::*;
 use orbitbody::OrbitBody;
 
-
 const DESIRED_FPS: u32 = 256;
 const DESIRED_DETLA: f64 = 1.0 / DESIRED_FPS as f64;
 

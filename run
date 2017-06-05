@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-RUST_BACKTRACE=full RUST_LOG=prototype_orbit=debug,gfx_shader_watch=info rustup run stable cargo run
+RUST_BACKTRACE=full RUST_LOG=prototype_orbit=debug,gfx_shader_watch=info rustup run stable cargo run "$@"
