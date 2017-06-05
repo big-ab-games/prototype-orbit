@@ -6,13 +6,11 @@ use input::*;
 use state::*;
 use time;
 use cgmath::*;
-use orbitcurve::OrbitCurve;
-use std::sync::mpsc;
-use rayon::prelude::*;
+// use rayon::prelude::*;
+use seer::*;
 
 const DESIRED_CPS: u32 = 1_080;
 const DESIRED_DELTA: f64 = 1.0 / DESIRED_CPS as f64;
-
 const GRAVITY: f64 = 0.01;
 
 pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
@@ -114,7 +112,7 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
     latest_state_getter
 }
 
-fn compute_state(mut state: &mut State, tasks: &mut Tasks, delta: f64) {
+pub fn compute_state(mut state: &mut State, tasks: &mut Tasks, delta: f64) {
     for idx in 0..state.drawables.orbit_bodies.len() {
         let mut new_velocity = state.drawables.orbit_bodies[idx].velocity;
 
@@ -157,129 +155,57 @@ fn handle_seer_projections(state: &mut State, seer: &mut Seer) {
     }
 }
 
-struct Seer {
-    pub projection: svsc::Getter<Vec<OrbitCurve>>,
-    pub main_deltas: mpsc::Sender<f64>,
-    pub min_plot_distance: f64,
-}
+#[cfg(test)]
+mod compute {
+    use super::*;
+    use uuid::Uuid;
+    use orbitbody::*;
 
-const SEER_COMPUTE_DELTA: f64 = 0.001;
-const SEER_MAX_PLOTS: usize = 50_000;
-const SEER_FAULT_TOLERANCE: f64 = 0.5;
+    #[cfg(feature = "bench")]
+    use test::Bencher;
 
-use uuid::Uuid;
+    #[cfg(feature = "bench")]
+    #[bench]
+    fn bench_compute_empty_tasks(b: &mut Bencher) {
+        let mut state = State::new(1980, 1440);
+        state.drawables = Drawables {
+            orbit_bodies: vec!(
+                OrbitBody {
+                    id: Uuid::new_v4(),
+                    center: (0.0, 0.0).into(),
+                    radius: 1.2,
+                    mass: 1660.0,
+                    velocity: (0.0, -1.0).into(),
+                },
+                OrbitBody {
+                    id: Uuid::new_v4(),
+                    center: (3.5, 0.0).into(),
+                    radius: 0.9,
+                    mass: 1000.0,
+                    velocity: (0.0, 1.6).into(),
+                },
+                OrbitBody {
+                    id: Uuid::new_v4(),
+                    center: (9.0, 0.0).into(),
+                    radius: 0.3,
+                    mass: 1.0,
+                    velocity: (0.0, 2.0).into(),
+                },
+                OrbitBody {
+                    id: Uuid::new_v4(),
+                    center: (-12.0, 0.0).into(),
+                    radius: 0.4,
+                    mass: 2.0,
+                    velocity: (0.0, -1.5).into(),
+                },
+            ),
+            orbit_curves: Vec::new(),
+        };
 
-impl Seer {
-    /// The lower the min plot distance the better the curve approximations
-    /// with higher load on the GPU, these values are an attempt to optimise
-    /// both concerns at different view levels
-    fn min_plot_distance_at_zoom(zoom: f32) -> f64 {
-        return if zoom >= 8.5 { 0.27 }
-            else if zoom >= 4.5 { 0.18 }
-            else if zoom >= 2.5 { 0.15 }
-            else if zoom >= 1.5 { 0.1 }
-            else { 0.05 }
-    }
+        let mut tasks = Tasks::new();
 
-    fn is_approx_as_good_as(&mut self, other: &mut Seer) -> bool {
-        let plots = self.projection.latest().get(0)
-            .map(|c| c.plots.len())
-            .unwrap_or(0) as f64 * self.min_plot_distance;
-        let other_plots = other.projection.latest().get(0)
-            .map(|c| c.plots.len())
-            .unwrap_or(0) as f64 * other.min_plot_distance;
-
-        plots >= other_plots * 0.99
-    }
-
-    fn new(initial_state: State, tasks: Tasks) -> Seer {
-        let (tx, main_deltas_receiver) = mpsc::channel();
-        let (projection_get, projection) = svsc::channel(Vec::new());
-
-        let zoom = tasks.zoom.as_ref().map(|z| z.zoom_destination()).unwrap_or(initial_state.zoom);
-        let min_plot_distance = Seer::min_plot_distance_at_zoom(zoom);
-
-        thread::spawn(move|| {
-            let mut tasks = tasks.world_affecting();
-            let mut plots = 0;
-            let mut state = initial_state;
-            let mut main_deltas_ahead = 0.0;
-
-            let mut filtering = false;
-            let (tx, filtered_updates) = mpsc::channel();
-
-            state.drawables.orbit_curves.clear();
-            for body in state.drawables.orbit_bodies.iter() {
-                let mut curve = OrbitCurve::new();
-                curve.plots.push(body.center);
-                state.drawables.orbit_curves.push(curve);
-            }
-
-            let me = Uuid::new_v4();
-            loop {
-                // consider main loop computed deltas and adjust
-                while let Ok(delta) = main_deltas_receiver.try_recv() {
-                    main_deltas_ahead += delta;
-                }
-                let outdated_plots = (main_deltas_ahead / SEER_COMPUTE_DELTA).floor();
-                if outdated_plots > 0.0 {
-                    main_deltas_ahead -= outdated_plots * SEER_COMPUTE_DELTA;
-                    if plots > outdated_plots as usize {
-                        plots -= outdated_plots as usize;
-                    }
-                    else {
-                        plots = 0;
-                    }
-                    for curve in state.drawables.orbit_curves.iter_mut() {
-                        curve.remove_oldest_plots(outdated_plots as usize);
-                    }
-                }
-
-                if plots >= SEER_MAX_PLOTS {
-                    if projection.getter_is_dead() {
-                        break; // dead getter, we've been forgotten
-                    }
-                    thread::sleep(Duration::from_millis((SEER_COMPUTE_DELTA * 500.0).round() as u64));
-                    continue;
-                }
-
-                compute_state(&mut state, &mut tasks, SEER_COMPUTE_DELTA);
-                for (idx, curve) in state.drawables.orbit_curves.iter_mut().enumerate() {
-                    let ref body = &state.drawables.orbit_bodies[idx];
-                    curve.plots.push(body.center);
-                }
-                plots += 1;
-
-                if !filtering {
-                    let curves = state.drawables.orbit_curves.clone();
-                    let sender = tx.clone();
-                    thread::spawn(move|| {
-                        // filtering curves is quite intensive, so use another thread
-                        let curves_for_render = curves.par_iter()
-                            .map(|c| c.with_minimum_plot_distance(min_plot_distance))
-                            .collect();
-
-                        if let Err(_) = sender.send(curves_for_render) {
-                            // err => seer is forgotten, not interesting
-                        }
-                    });
-                    filtering = true;
-                }
-
-                if let Ok(curves) = filtered_updates.try_recv() {
-                    if let Err(_) = projection.update(curves) {
-                        break; // dead getter, we've been forgotten
-                    }
-                    filtering = false;
-                }
-            }
-            trace!("Seer {} forgetten", me);
+        b.iter(|| {
+            compute_state(&mut state, &mut tasks, 0.001);
         });
-
-        Seer {
-            projection: projection_get,
-            main_deltas: tx,
-            min_plot_distance,
-        }
     }
 }

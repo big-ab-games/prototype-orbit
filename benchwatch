@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+nodemon -e rs --ignore 'target/*' --exec rustup run nightly cargo bench "$@" --features "bench"

@@ -28,6 +28,7 @@ mod ease;
 mod compute;
 mod debug;
 mod orbitcurve;
+mod seer;
 
 use gfx::{Device};
 use glutin::*;
