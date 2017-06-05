@@ -55,7 +55,7 @@ impl Drawables {
             .fold(1./0., f64::min) * fault_tolerance;
 
         for (idx, curve) in self.orbit_curves.iter().enumerate() {
-            if curve.plots.len() > 0 {
+            if !curve.plots.is_empty() {
                 let dist_to_body = curve.plots[0].distance(self.orbit_bodies[idx].center);
                 if dist_to_body > mismatch_distance {
                     return true;

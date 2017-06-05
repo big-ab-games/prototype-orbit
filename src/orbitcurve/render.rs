@@ -128,12 +128,11 @@ impl<R: Resources, F: Factory<R>> OrbitCurveBrush<R, F> {
             let c2 = curve.plots[plot_idx + 1].cast();
             let c3 = curve.plots.get(plot_idx + 2).map(|p| p.cast());
 
-            if !view.contains(c1) && !view.contains(c2) {
-                if (plot_idx == 0 || !view.contains(curve.plots[plot_idx-1].cast())) &&
-                    (c3.is_none() || !view.contains(c3.unwrap())) {
-                    // Current points, and neighbours are outsite the current view, so skip
-                    continue;
-                }
+            if !view.contains(c1) && !view.contains(c2) &&
+                (plot_idx == 0 || !view.contains(curve.plots[plot_idx-1].cast())) &&
+                (c3.is_none() || !view.contains(c3.unwrap())) {
+                // Current points, and neighbours are outsite the current view, so skip
+                continue;
             }
 
             let c1_perp_onwards = perp((c2 - c1).normalize_to(LINE_WIDTH / 2.0));

@@ -156,7 +156,7 @@ impl UserMouse {
                 else if new_zoom > MAX_ZOOM {
                     new_zoom = MAX_ZOOM;
                 }
-                tasks.zoom = Some(Zoomer::zoom_to_screen(new_zoom, self.last_position, &state));
+                tasks.zoom = Some(Zoomer::zoom_to_screen(new_zoom, self.last_position, state));
                 debug!("wheel:zooming {:.2} -> {:.2} toward ({:.3},{:.3})",
                     state.zoom, new_zoom, self.last_position.0, self.last_position.1);
             }
@@ -211,31 +211,28 @@ impl UserKeys {
     }
 
     pub fn handle(&mut self, state: &mut State, _delta: f32, event: &WindowEvent, tasks: &mut Tasks) {
-        match event {
-            &WindowEvent::KeyboardInput(ElementState::Pressed, _, Some(keypress), _) => {
-                let body = match keypress {
-                    VirtualKeyCode::Home => state.drawables.orbit_bodies.iter()
-                        .max_by_key(|x| x.mass.round() as i64),
-                    VirtualKeyCode::Key1 => state.drawables.orbit_bodies.get(0),
-                    VirtualKeyCode::Key2 => state.drawables.orbit_bodies.get(1),
-                    VirtualKeyCode::Key3 => state.drawables.orbit_bodies.get(2),
-                    VirtualKeyCode::Key4 => state.drawables.orbit_bodies.get(3),
-                    VirtualKeyCode::Key5 => state.drawables.orbit_bodies.get(4),
-                    VirtualKeyCode::Key6 => state.drawables.orbit_bodies.get(5),
-                    VirtualKeyCode::Key7 => state.drawables.orbit_bodies.get(6),
-                    VirtualKeyCode::Key8 => state.drawables.orbit_bodies.get(7),
-                    VirtualKeyCode::Key9 => state.drawables.orbit_bodies.get(8),
-                    VirtualKeyCode::Key0 => state.drawables.orbit_bodies.get(9),
-                    _ => None
-                };
-                if let Some(body) = body {
-                    tasks.follow = None;
-                    tasks.zoom = Some(Zoomer::zoom_to_world(state.zoom,
-                                                            body.center.cast().into(),
-                                                            &state));
-                }
-            },
-            _ => ()
+        if let &WindowEvent::KeyboardInput(ElementState::Pressed, _, Some(keypress), _) = event {
+            let body = match keypress {
+                VirtualKeyCode::Home => state.drawables.orbit_bodies.iter()
+                    .max_by_key(|x| x.mass.round() as i64),
+                VirtualKeyCode::Key1 => state.drawables.orbit_bodies.get(0),
+                VirtualKeyCode::Key2 => state.drawables.orbit_bodies.get(1),
+                VirtualKeyCode::Key3 => state.drawables.orbit_bodies.get(2),
+                VirtualKeyCode::Key4 => state.drawables.orbit_bodies.get(3),
+                VirtualKeyCode::Key5 => state.drawables.orbit_bodies.get(4),
+                VirtualKeyCode::Key6 => state.drawables.orbit_bodies.get(5),
+                VirtualKeyCode::Key7 => state.drawables.orbit_bodies.get(6),
+                VirtualKeyCode::Key8 => state.drawables.orbit_bodies.get(7),
+                VirtualKeyCode::Key9 => state.drawables.orbit_bodies.get(8),
+                VirtualKeyCode::Key0 => state.drawables.orbit_bodies.get(9),
+                _ => None
+            };
+            if let Some(body) = body {
+                tasks.follow = None;
+                tasks.zoom = Some(Zoomer::zoom_to_world(state.zoom,
+                                                        body.center.cast().into(),
+                                                        state));
+            }
         }
     }
 }

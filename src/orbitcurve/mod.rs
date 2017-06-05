@@ -56,7 +56,7 @@ impl OrbitCurve {
                     // gap satisfied expectations
                     plots.push(next);
                     last_plot = next;
-                    last_plot_idx = last_plot_idx + last_gap;
+                    last_plot_idx += last_gap;
                     continue;
                 }
                 else {

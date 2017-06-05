@@ -24,11 +24,11 @@ impl Seer {
     /// with higher load on the GPU, these values are an attempt to optimise
     /// both concerns at different view levels
     pub fn min_plot_distance_at_zoom(zoom: f32) -> f64 {
-        return if zoom >= 8.5 { 0.27 }
-            else if zoom >= 4.5 { 0.18 }
-            else if zoom >= 2.5 { 0.15 }
-            else if zoom >= 1.5 { 0.1 }
-            else { 0.05 }
+        if zoom >= 8.5 { 0.27 }
+        else if zoom >= 4.5 { 0.18 }
+        else if zoom >= 2.5 { 0.15 }
+        else if zoom >= 1.5 { 0.1 }
+        else { 0.05 }
     }
 
     pub fn is_approx_as_good_as(&mut self, other: &mut Seer) -> bool {
@@ -95,7 +95,7 @@ impl Seer {
 
                 compute_state(&mut state, &mut tasks, SEER_COMPUTE_DELTA);
                 for (idx, curve) in state.drawables.orbit_curves.iter_mut().enumerate() {
-                    let ref body = &state.drawables.orbit_bodies[idx];
+                    let body = &state.drawables.orbit_bodies[idx];
                     curve.plots.push(body.center);
                 }
                 plots += 1;
@@ -109,7 +109,7 @@ impl Seer {
                             .map(|c| c.with_minimum_plot_distance(min_plot_distance))
                             .collect();
 
-                        if let Err(_) = sender.send(curves_for_render) {
+                        if sender.send(curves_for_render).is_err() {
                             // err => seer is forgotten, not interesting
                         }
                     });
@@ -117,7 +117,7 @@ impl Seer {
                 }
 
                 if let Ok(curves) = filtered_updates.try_recv() {
-                    if let Err(_) = projection.update(curves) {
+                    if projection.update(curves).is_err() {
                         break; // dead getter, we've been forgotten
                     }
                     filtering = false;

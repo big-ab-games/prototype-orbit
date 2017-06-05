@@ -34,7 +34,7 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
             let delta = it_start - last_loop;
             last_loop = it_start;
 
-            events.poll_events(|Event::WindowEvent{window_id: _, event}| {
+            events.poll_events(|Event::WindowEvent{ event, .. }| {
                 match event {
                     WindowEvent::KeyboardInput(_, _, Some(VirtualKeyCode::Escape), _) |
                     WindowEvent::Closed => state.user_quit = true,
@@ -69,7 +69,7 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
                 }
             }
             else if let Some(mut apprentice) = seer_apprentice.take() {
-                if state.drawables.orbit_curves.len() > 0 {
+                if !state.drawables.orbit_curves.is_empty() {
                     if apprentice.is_approx_as_good_as(&mut seer) {
                         debug!("Promoting apprentice seer");
                         seer = apprentice;
@@ -98,7 +98,7 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
             state.debug_info.mean_cps = mean_cps;
 
             // update render state
-            if let Err(_) = render_state.update(state.clone()) {
+            if render_state.update(state.clone()).is_err() {
                 break; // rendering has finished / no getter
             }
 
@@ -118,8 +118,8 @@ pub fn compute_state(mut state: &mut State, tasks: &mut Tasks, delta: f64) {
 
         for idx2 in 0..state.drawables.orbit_bodies.len() {
             if idx != idx2 {
-                let ref body = state.drawables.orbit_bodies[idx];
-                let ref other = state.drawables.orbit_bodies[idx2];
+                let body = &state.drawables.orbit_bodies[idx];
+                let other = &state.drawables.orbit_bodies[idx2];
                 let dist_squared = body.center.distance2(other.center);
                 let acceleration_scalar = GRAVITY * other.mass / dist_squared;
                 let accelaration = (other.center - body.center).normalize_to(acceleration_scalar);
@@ -155,16 +155,15 @@ fn handle_seer_projections(state: &mut State, seer: &mut Seer) {
     }
 }
 
+#[cfg(feature = "bench")]
 #[cfg(test)]
 mod compute {
     use super::*;
     use uuid::Uuid;
     use orbitbody::*;
 
-    #[cfg(feature = "bench")]
     use test::Bencher;
 
-    #[cfg(feature = "bench")]
     #[bench]
     fn bench_compute_empty_tasks(b: &mut Bencher) {
         let mut state = State::new(1980, 1440);

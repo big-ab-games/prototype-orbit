@@ -122,7 +122,7 @@ pub fn main() {
         }
 
         let projection = state.projection();
-        let view = state.view.clone();
+        let view = state.view;
         let visible_world_range = state.visible_world_range();
 
         encoder.clear(&main_color, CLEAR_COLOR);
@@ -141,7 +141,7 @@ pub fn main() {
                     factory.clone(), &main_color, &main_depth));
         }
         for (idx, curve) in state.drawables.orbit_curves.iter().enumerate() {
-            orbit_curve_brushes[idx].draw(&mut encoder, &transform, &curve, visible_world_range);
+            orbit_curve_brushes[idx].draw(&mut encoder, &transform, curve, visible_world_range);
         }
 
         orbit_body_brush.draw(&mut encoder, &transform, &state.drawables.orbit_bodies);
