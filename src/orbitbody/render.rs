@@ -105,11 +105,9 @@ impl<R: Resources, F: Factory<R>> OrbitBodyBrush<R, F> {
 
             let mut all_verts = Vec::with_capacity(bodies.len() * 3);
             for body_idx in 0..bodies.len() {
-                let verts = ORBIT_BODY_VERTICES;
-                for i in 0..verts.len() {
-                    let mut vert = verts[i];
+                for vert in &mut ORBIT_BODY_VERTICES {
                     vert.local_idx = body_idx as u32;
-                    all_verts.push(vert);
+                    all_verts.push(*vert);
                 }
             }
             let (vertex_buffer, slice) = self.pso_cell.factory().create_vertex_buffer_with_slice(all_verts.as_slice(), ());
@@ -117,8 +115,8 @@ impl<R: Resources, F: Factory<R>> OrbitBodyBrush<R, F> {
             self.slice = slice;
         }
 
-        for idx in 0..bodies.len() {
-            let locals = OrbitBodyTransform::new(local_transform(&bodies[idx]));
+        for (idx, body) in bodies.iter().enumerate() {
+            let locals = OrbitBodyTransform::new(local_transform(body));
             encoder.update_buffer(&self.data.local_transform, &[locals], idx).expect("OrbitBody draw");
         }
 
