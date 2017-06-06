@@ -13,6 +13,7 @@ const DESIRED_CPS: u32 = 1_080;
 const DESIRED_DELTA: f64 = 1.0 / DESIRED_CPS as f64;
 const GRAVITY: f64 = 0.01;
 
+#[cfg_attr(feature = "cargo-clippy", allow(float_cmp))]
 pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
     let (latest_state_getter, render_state) = svsc::channel(initial_state.clone());
 
@@ -63,6 +64,8 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
                     debug!("Curve mismatch detected, getting an apprentice seer...");
                     seer_apprentice = Some(Seer::new(state.clone(), tasks.clone()));
                 }
+                // float comparison here works, as min_plot_distance_at_zoom returns from a set
+                // of constants that are not modified
                 else if seer.min_plot_distance != Seer::min_plot_distance_at_zoom(zoom) {
                     debug!("Zoom change needs seer plot accuracy, getting an apprentice seer...");
                     seer_apprentice = Some(Seer::new(state.clone(), tasks.clone()));
@@ -175,12 +178,12 @@ fn handle_seer_projections(state: &mut State, seer: &mut Seer) {
     // fade between [10, 20]
     if state.zoom > 10.0 {
         let opacity = 1.0 - (state.zoom - 10.0) / 10.0;
-        for curve in state.drawables.orbit_curves.iter_mut() {
+        for curve in &mut state.drawables.orbit_curves {
             curve.opacity = opacity;
         }
     }
     else {
-        for curve in state.drawables.orbit_curves.iter_mut() {
+        for curve in &mut state.drawables.orbit_curves {
             curve.opacity = 1.0;
         }
     }
@@ -285,7 +288,7 @@ mod compute_bench {
                 let mut tasks = Tasks::new();
                 // err probably just means has already been called
                 rayon::initialize(rayon::Configuration::new()).is_err();
-                
+
                 b.iter(|| compute_state(&mut state, &mut tasks, 0.001));
             }
         }

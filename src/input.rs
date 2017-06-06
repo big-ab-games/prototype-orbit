@@ -140,8 +140,8 @@ impl UserMouse {
     }
 
     pub fn handle(&mut self, state: &mut State, _delta: f32, event: &WindowEvent, tasks: &mut Tasks) {
-        match event {
-            &WindowEvent::MouseWheel(MouseScrollDelta::LineDelta(_, y), ..) => {
+        match *event {
+            WindowEvent::MouseWheel(MouseScrollDelta::LineDelta(_, y), ..) => {
                 // general double/half zoom for fast view changes
                 let mut current_zoom = state.zoom;
                 if let Some(ref zoomer) = tasks.zoom {
@@ -160,7 +160,7 @@ impl UserMouse {
                 debug!("wheel:zooming {:.2} -> {:.2} toward ({:.3},{:.3})",
                     state.zoom, new_zoom, self.last_position.0, self.last_position.1);
             }
-            &WindowEvent::MouseInput(ElementState::Pressed, MouseButton::Left) => {
+            WindowEvent::MouseInput(ElementState::Pressed, MouseButton::Left) => {
                 self.left_down = Some(self.last_position);
                 // cancel any current tasks
                 tasks.zoom = None;
@@ -170,13 +170,13 @@ impl UserMouse {
                 }
                 self.last_left_click = Instant::now();
             },
-            &WindowEvent::MouseInput(ElementState::Released, MouseButton::Left) => {
+            WindowEvent::MouseInput(ElementState::Released, MouseButton::Left) => {
                 if self.left_down.is_some() {
                     debug!("left-drag {:?} -> {:?}", self.left_down.unwrap(), self.last_position);
                     self.left_down = None;
                 }
             },
-            &WindowEvent::MouseMoved(x, y) => {
+            WindowEvent::MouseMoved(x, y) => {
                 if self.left_down.is_some() {
                     let movement =
                         state.screen_to_world(self.last_position) - state.screen_to_world((x, y));
@@ -211,7 +211,7 @@ impl UserKeys {
     }
 
     pub fn handle(&mut self, state: &mut State, _delta: f32, event: &WindowEvent, tasks: &mut Tasks) {
-        if let &WindowEvent::KeyboardInput(ElementState::Pressed, _, Some(keypress), _) = event {
+        if let WindowEvent::KeyboardInput(ElementState::Pressed, _, Some(keypress), _) = *event {
             let body = match keypress {
                 VirtualKeyCode::Home => state.drawables.orbit_bodies.iter()
                     .max_by_key(|x| x.mass.round() as i64),

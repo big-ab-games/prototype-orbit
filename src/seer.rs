@@ -31,6 +31,8 @@ impl Seer {
         else { 0.05 }
     }
 
+    // needs &mut as it uses svsc#latest
+    #[cfg_attr(feature = "cargo-clippy", allow(wrong_self_convention))]
     pub fn is_approx_as_good_as(&mut self, other: &mut Seer) -> bool {
         let plots = self.projection.latest().get(0)
             .map(|c| c.plots.len())
@@ -59,7 +61,7 @@ impl Seer {
             let (tx, filtered_updates) = mpsc::channel();
 
             state.drawables.orbit_curves.clear();
-            for body in state.drawables.orbit_bodies.iter() {
+            for body in &state.drawables.orbit_bodies {
                 let mut curve = OrbitCurve::new();
                 curve.plots.push(body.center);
                 state.drawables.orbit_curves.push(curve);
@@ -80,7 +82,7 @@ impl Seer {
                     else {
                         plots = 0;
                     }
-                    for curve in state.drawables.orbit_curves.iter_mut() {
+                    for curve in &mut state.drawables.orbit_curves {
                         curve.remove_oldest_plots(outdated_plots as usize);
                     }
                 }
