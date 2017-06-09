@@ -7,7 +7,7 @@ out vec4 out_color;
 const float border_dist = 0.9;
 
 void main() {
-    float dist = sqrt(model.x * model.x + model.y * model.y);
+    float dist = pow(model.x, 2) + pow(model.y, 2);
     if (dist > 1.0) {
         discard;
     }

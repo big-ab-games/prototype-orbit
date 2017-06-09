@@ -85,6 +85,7 @@ pub struct State {
     pub drawables: Drawables,
     pub debug_info: ComputeDebugInfo,
     pub pause: bool,
+    pub render_curves: bool,
 }
 
 impl State {
@@ -99,6 +100,7 @@ impl State {
             drawables: Drawables::initial(),
             debug_info: ComputeDebugInfo::initial(),
             pause: false,
+            render_curves: true,
         }
     }
 

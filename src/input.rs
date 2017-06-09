@@ -233,8 +233,11 @@ impl UserKeys {
                                                         body.center.cast().into(),
                                                         state));
             }
-            else if keypress == VirtualKeyCode::P {
+            if keypress == VirtualKeyCode::P {
                 state.pause = !state.pause;
+            }
+            if keypress == VirtualKeyCode::C {
+                state.render_curves = !state.render_curves;
             }
         }
     }
