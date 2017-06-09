@@ -233,6 +233,9 @@ impl UserKeys {
                                                         body.center.cast().into(),
                                                         state));
             }
+            else if keypress == VirtualKeyCode::P {
+                state.pause = !state.pause;
+            }
         }
     }
 }

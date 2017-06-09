@@ -84,6 +84,7 @@ pub struct State {
     pub user_quit: bool,
     pub drawables: Drawables,
     pub debug_info: ComputeDebugInfo,
+    pub pause: bool,
 }
 
 impl State {
@@ -97,6 +98,7 @@ impl State {
             user_quit: false,
             drawables: Drawables::initial(),
             debug_info: ComputeDebugInfo::initial(),
+            pause: false,
         }
     }
 

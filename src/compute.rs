@@ -32,8 +32,11 @@ pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
         let mut mean_cps = DESIRED_CPS; // optimistic
         loop {
             let it_start = time::precise_time_s();
-            let delta = it_start - last_loop;
+            let mut delta = it_start - last_loop;
             last_loop = it_start;
+            if state.pause {
+                delta = 0.0;
+            }
 
             events.poll_events(|Event::WindowEvent{ event, .. }| {
                 match event {
