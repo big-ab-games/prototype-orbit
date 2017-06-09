@@ -11,7 +11,7 @@ pub struct Easer<T> {
     easing: fn(T, T, T, T) -> T,
 }
 
-use num_traits::{Float, Zero};
+use num::{Float, Zero};
 
 #[allow(dead_code)]
 fn linear_easing<F: Float>(t: F, b: F, c: F, d: F) -> F {

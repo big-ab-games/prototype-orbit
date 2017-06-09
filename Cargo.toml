@@ -17,7 +17,7 @@ image = "0"
 cgmath = "0"
 notify = "4"
 easer = "0"
-num-traits = "0"
+num = "0"
 uuid = { version = "0", features = ["v4"] }
 rayon = "0"
 
