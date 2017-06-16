@@ -4,7 +4,7 @@ in vec2 model;
 in float alpha_base;
 
 out vec4 out_color;
-const float border_dist = 0.9;
+const float border_dist = 0.81;
 
 void main() {
     float dist = pow(model.x, 2) + pow(model.y, 2);

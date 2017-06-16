@@ -9,7 +9,7 @@ use std::time::{Instant, Duration};
 
 const MIN_ZOOM: f32 = 0.5;
 const MAX_ZOOM: f32 = 70.0;
-
+const ZOOM_DURATION_SECONDS: f32 = 1.0;
 const DBL_CLICK_MS: u64 = 500;
 
 #[derive(Clone, Debug)]
@@ -28,7 +28,7 @@ impl Zoomer {
         Zoomer {
             easer: Easer::using(Expo::ease_out)
                     .start(time::precise_time_s() as f32)
-                    .duration(1.0)
+                    .duration(ZOOM_DURATION_SECONDS)
                     .add_transition(current.zoom, zoom)
                     .add_transition(current.origin.x, new_origin.x)
                     .add_transition(current.origin.y, new_origin.y)
@@ -39,7 +39,7 @@ impl Zoomer {
         Zoomer {
             easer: Easer::using(Expo::ease_out)
                     .start(time::precise_time_s() as f32)
-                    .duration(1.0)
+                    .duration(ZOOM_DURATION_SECONDS)
                     .add_transition(current.zoom, zoom)
                     .add_transition(current.origin.x, world_location.0)
                     .add_transition(current.origin.y, world_location.1)
@@ -50,7 +50,7 @@ impl Zoomer {
         Zoomer {
             easer: Easer::using(Expo::ease_out)
                     .start(time::precise_time_s() as f32)
-                    .duration(1.0)
+                    .duration(ZOOM_DURATION_SECONDS)
                     .add_transition(current.zoom, zoom)
                     .add_transition(current.origin.x, current.origin.x)
                     .add_transition(current.origin.y, current.origin.y)
