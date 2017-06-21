@@ -19,6 +19,7 @@ easer = "0"
 num = "0"
 uuid = { version = "0", features = ["v4"] }
 rayon = "0"
+single_value_channel = "1"
 
 [features]
 bench = []

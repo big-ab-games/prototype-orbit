@@ -1,4 +1,4 @@
-use svsc;
+use single_value_channel::*;
 use glutin::*;
 use std::thread;
 use std::time::Duration;
@@ -14,8 +14,8 @@ const DESIRED_DELTA: f64 = 1.0 / DESIRED_CPS as f64;
 const GRAVITY: f64 = 0.01;
 
 #[cfg_attr(feature = "cargo-clippy", allow(float_cmp))]
-pub fn start(initial_state: State, events: EventsLoop) -> svsc::Getter<State> {
-    let (latest_state_getter, render_state) = svsc::channel(initial_state.clone());
+pub fn start(initial_state: State, events: EventsLoop) -> Receiver<State> {
+    let (latest_state_getter, render_state) = channel_starting_with(initial_state.clone());
 
     thread::spawn(move|| {
         let mut tasks = Tasks::new();

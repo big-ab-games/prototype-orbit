@@ -1,4 +1,4 @@
-use svsc;
+use single_value_channel;
 use std::thread;
 use std::time::Duration;
 use input::*;
@@ -10,7 +10,7 @@ use uuid::Uuid;
 use compute::compute_state;
 
 pub struct Seer {
-    pub projection: svsc::Getter<Vec<OrbitCurve>>,
+    pub projection: single_value_channel::Receiver<Vec<OrbitCurve>>,
     pub main_deltas: mpsc::Sender<f64>,
     pub min_plot_distance: f64,
 }
@@ -46,7 +46,7 @@ impl Seer {
 
     pub fn new(initial_state: State, tasks: Tasks) -> Seer {
         let (tx, main_deltas_receiver) = mpsc::channel();
-        let (projection_get, projection) = svsc::channel(Vec::new());
+        let (projection_get, projection) = single_value_channel::channel_starting_with(Vec::new());
 
         let zoom = tasks.zoom.as_ref().map(|z| z.zoom_destination()).unwrap_or(initial_state.zoom);
         let min_plot_distance = Seer::min_plot_distance_at_zoom(zoom);
@@ -88,7 +88,7 @@ impl Seer {
                 }
 
                 if plots >= SEER_MAX_PLOTS {
-                    if projection.getter_is_dead() {
+                    if projection.has_no_receiver() {
                         break; // dead getter, we've been forgotten
                     }
                     thread::sleep(Duration::from_millis((SEER_COMPUTE_DELTA * 500.0).round() as u64));

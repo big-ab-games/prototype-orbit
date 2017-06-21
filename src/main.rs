@@ -17,10 +17,10 @@ extern crate easer;
 extern crate num;
 extern crate uuid;
 extern crate rayon;
+extern crate single_value_channel;
 
 mod input;
 mod state;
-mod svsc;
 mod background;
 mod orbitbody;
 mod ease;
