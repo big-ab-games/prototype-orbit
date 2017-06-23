@@ -135,7 +135,7 @@ impl UserMouse {
             left_down: None,
             last_position: (0, 0),
             // init in past sometime, to avoid optional complexity
-            last_left_click: Instant::now() - Duration::from_secs(999)
+            last_left_click: Instant::now() - Duration::from_secs(2)
         }
     }
 

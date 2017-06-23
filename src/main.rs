@@ -76,13 +76,16 @@ pub fn load_texture<R, F>(factory: &mut F,
 pub fn main() {
     pretty_env_logger::init().unwrap();
 
+    let (win_width, win_height) = (1024, 768); // blog size: 800, 478
     let events_loop = EventsLoop::new();
     let builder = WindowBuilder::new()
         .with_title("Orbits".to_string())
-        .with_dimensions(1024, 768) // blog size: 800, 478
+        .with_dimensions(win_width, win_height)
+        .with_min_dimensions(win_width, win_height)
+        .with_max_dimensions(win_width, win_height)
         .with_gl_profile(GlProfile::Core)
         .with_gl(GlRequest::Specific(Api::OpenGl, (3, 3)))
-        .with_multisampling(8);
+        .with_multisampling(0);
 
     let (window, mut device, mut factory, main_color, main_depth) =
             gfx_window_glutin::init::<ColorFormat, DepthFormat>(builder, &events_loop);

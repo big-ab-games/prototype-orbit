@@ -48,9 +48,12 @@ pub fn start(initial_state: State, events: EventsLoop) -> Receiver<State> {
                 user_keys.handle(&mut state, delta as f32, &event, &mut tasks);
             });
 
+
             compute_state(&mut state, &mut tasks, delta);
+            trace!("compute_state in {:.3}s", time::precise_time_s() - it_start);
 
             handle_seer_projections(&mut state, &mut seer);
+            trace!("handle_seer_projections in {:.3}s", time::precise_time_s() - it_start);
 
             if seer_apprentice.is_none() {
                 let mut zoom = tasks.zoom.as_ref()
@@ -107,6 +110,7 @@ pub fn start(initial_state: State, events: EventsLoop) -> Receiver<State> {
             if render_state.update(state.clone()).is_err() {
                 break; // rendering has finished / no getter
             }
+            trace!("render_state.update in {:.3}s", time::precise_time_s() - it_start);
 
             let sleep_delta = DESIRED_DELTA - (time::precise_time_s() - it_start);
             if sleep_delta > 0.0 {
