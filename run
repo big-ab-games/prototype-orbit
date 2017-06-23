@@ -1,2 +1,6 @@
 #!/usr/bin/env bash
-RUST_BACKTRACE=full RUST_LOG=prototype_orbit=debug,gfx_shader_watch=info rustup run stable cargo run "$@"
+cargo_name="$(cat Cargo.toml | grep -m1 'name = ' | cut -d'"' -f2)"
+RUST_BACKTRACE=full \
+ RUST_LOG=$cargo_name=debug,gfx_shader_watch=info \
+ vblank_mode=0 \
+ cargo run "$@"
