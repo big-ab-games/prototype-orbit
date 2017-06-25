@@ -156,10 +156,15 @@ impl<R: Resources, F: Factory<R>> OrbitCurveBrush<R, F> {
             all_verts.push(v3);
             all_verts.push(v4);
 
+            let mut opacity = curve.opacity * (1.0 - (plot_idx+1) as f32 / (curve.plots.len()-1) as f32);
+            if opacity < 0.00001 { // try to avoid f32 math irregularities
+                opacity = 0.0;
+            }
+
             let bezier = OrbitCurveBezier {
                 p1: c1.into(),
                 p2: c2.into(),
-                opacity: curve.opacity * (1.0 - (plot_idx+1) as f32 / (curve.plots.len()-1) as f32),
+                opacity,
                 thickness: LINE_WIDTH,
                 std140_offset: [0; 2],
             };

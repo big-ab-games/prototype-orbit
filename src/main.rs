@@ -81,8 +81,6 @@ pub fn main() {
     let builder = WindowBuilder::new()
         .with_title("Orbits".to_string())
         .with_dimensions(win_width, win_height)
-        .with_min_dimensions(win_width, win_height)
-        .with_max_dimensions(win_width, win_height)
         .with_gl_profile(GlProfile::Core)
         .with_gl(GlRequest::Specific(Api::OpenGl, (3, 3)))
         .with_multisampling(0);
