@@ -4,21 +4,21 @@ version = "0.1.1"
 authors = ["Alex Butler <alexheretic@gmail.com>"]
 
 [dependencies]
-gfx = "0"
-gfx_text = "0"
-gfx_window_glutin = "0"
-gfx_macros = "0"
-glutin = "0"
-gfx_shader_watch = "0"
-log = "0"
-pretty_env_logger = "0"
-time = "0"
-image = "0"
-cgmath = "0"
-easer = "0"
-num = "0"
-uuid = { version = "0", features = ["v4"] }
-rayon = "0"
+gfx = "0.16"
+gfx_text = "0.17"
+gfx_window_glutin = "0.16"
+gfx_macros = "0.2"
+glutin = "0.8"
+gfx_shader_watch = "0.3"
+log = "0.3"
+pretty_env_logger = "0.1"
+time = "0.1"
+image = "0.14"
+cgmath = "0.14"
+easer = "0.2"
+num = "0.1"
+uuid = { version = "0.5", features = ["v4"] }
+rayon = "0.8"
 single_value_channel = "1"
 
 [features]
